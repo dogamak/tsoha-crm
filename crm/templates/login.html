@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block navbar_center %}
+{% endblock %}
+
+{% block content %}
+  <div class="container-sm login-container">
+    <div class="card mt-3 shadow">
+      <div class="card-header">Login</div>
+      <div class="card-body">
+        <form method="POST" action="/login">
+          <div class="mb-3">
+            <label>Username</label>
+            <input type="text" name="username" class="form-control" />
+          </div>
+          <div class="mb-3">
+            <label>Password</label>
+            <input type="password" name="password" class="form-control" />
+          </div>
+          <div>
+            <button class="btn btn-primary">Login</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}

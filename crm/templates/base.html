@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>CRM</title>
+    <link href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.css') }}" rel="stylesheet" type="text/css" />
+    <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet" type="text/css" />
+    <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+  </head>
+  <body>
+    <header class="main-header navbar navbar-dark bg-dark d-flex align-items-center">
+      <div class="container-sm">
+        <div class="ms-3 col-md-3">
+          <a href="/" class="navbar-brand">CRM</a>
+          <span class="text-muted" style="font-weight: 700; font-size: 1.2rem">Asiakkuudenhallinta</span>
+        </div>
+        <form class="col-md-3">
+          {% block navbar_center %}
+            <input type="search" class="navbar-search form-control form-control-dark" placeholder="Search" />
+          {% endblock %}
+        </form>
+        <div class="col-md-3 text-end">
+          {% block navbar_right %}
+            <div class="dropdown d-inline-block">
+              <a href="#" class="dropdown-toggle text-white" style="text-decoration: none" data-bs-toggle="dropdown" data-bs-offset="100,100">
+                <div class="rounded-circle navbar-avatar"></div>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item">Asetukset</a></li>
+                <li><a class="dropdown-item" href="/logout">Kirjaudu ulos</a></li>
+              </ul>
+            </div>
+          {% endblock %}
+        </div>
+      </div>
+    </header>
+
+    {% block post_header %}
+    {% endblock %}
+
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+      <div class="flash-message-banner message-{{category}} py-2 px-3 border-bottom">
+        {{ message }}
+      </div>
+    {% endfor %}
+
+    {% block content %}
+    {% endblock %}
+  </body>
+</html>
