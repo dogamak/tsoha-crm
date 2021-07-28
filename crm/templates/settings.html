@@ -1,0 +1,31 @@
+{% extends "base_with_details.html" %}
+
+{% block details %}
+  Asetukset
+{% endblock %}
+
+{% block content %}
+  <div class="container-sm">
+    <div class="row">
+      <div class="col-md-3">
+        <b class="mb-2 mt-4 ms-3 d-block">Käyttäjäasetukset</b>
+        <ul class="list-group">
+          <li class="list-group-item">Profiili</li>
+        </ul>
+
+        <b class="mb-2 mt-4 ms-3 d-block">Järjestelmäasetukset</b>
+        <ul class="list-group">
+          <li class="list-group-item"><a href="{{ url_for('settings.user_management') }}">Käyttäjienhallinta</a></li>
+        </ul>
+      </div>
+      <div class="col-md-9">
+        <div class="card mt-4">
+          <div class="card-body">
+            {% block settings_content %}
+            {% endblock %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

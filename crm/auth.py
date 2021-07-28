@@ -1,5 +1,5 @@
 import functools
-from flask import Blueprint, render_template, request, session, redirect, flash
+from flask import Blueprint, render_template, request, session, redirect, flash, url_for
 
 from crm.db import get_db
 from crm.models import User
@@ -10,7 +10,7 @@ def require_auth(handler):
     @functools.wraps(handler)
     def wrapper(*args, **kwargs):
         if 'user_id' not in session:
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
 
         return handler(*args, **kwargs)
 

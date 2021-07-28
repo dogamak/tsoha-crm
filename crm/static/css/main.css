@@ -53,3 +53,7 @@
   background: #00000038;
   border-color: #FFFFFF3B;
 }
+
+.user-management-table tr:last-child td {
+  border-bottom: none;
+}

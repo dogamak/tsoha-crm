@@ -1,6 +1,7 @@
-from flask import Flask, render_template, session, redirect
+from flask import Flask, render_template, session, redirect, request, url_for, flash
 import toml
 
+import crm.settings
 import crm.auth
 import crm.db
 
@@ -22,5 +23,6 @@ def create_app(test_config=None):
         return render_template('dashboard.html')
 
     app.register_blueprint(auth.blueprint)
+    app.register_blueprint(settings.blueprint)
 
     return app
