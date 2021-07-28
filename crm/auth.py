@@ -2,7 +2,7 @@ import functools
 from flask import Blueprint, render_template, request, session, redirect, flash, url_for
 
 from crm.db import get_db
-from crm.models import User
+from crm.models.user import User, UserRole
 
 blueprint = Blueprint('auth', __name__)
 
@@ -15,6 +15,34 @@ def require_auth(handler):
         return handler(*args, **kwargs)
 
     return wrapper
+
+def require_role(role):
+    def decorator(handler):
+        @functools.wraps(handler)
+        def wrapper(*args, **kwargs):
+            if 'user_id' not in session:
+                return redirect(url_for('auth.login'))
+
+            if not has_role(role):
+                flash('Access denied.', 'error')
+                return redirect(url_for('dashboard'))
+
+            return handler(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+def has_role(role):
+    if isinstance(role, str):
+        role = UserRole(role)
+
+    if 'user_id' not in session:
+        return False
+
+    user = User.query.get(session['user_id'])
+
+    return user is not None and user.role == role
 
 @blueprint.route('/login')
 def login():

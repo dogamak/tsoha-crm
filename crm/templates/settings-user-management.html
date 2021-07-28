@@ -13,7 +13,7 @@
         {% for user in users %}
         <tr>
           <td style="width: 2.54rem" class="text-center border-end"><input type="checkbox" /></td>
-          <td>{{user.username}}</td>
+          <td>{{user.username}} <span class="badge bg-secondary">{{user.role.value}}</span></td>
         </tr>
         {% endfor %}
       </table>

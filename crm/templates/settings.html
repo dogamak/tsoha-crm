@@ -13,10 +13,12 @@
           <li class="list-group-item">Profiili</li>
         </ul>
 
-        <b class="mb-2 mt-4 ms-3 d-block">Järjestelmäasetukset</b>
-        <ul class="list-group">
-          <li class="list-group-item"><a href="{{ url_for('settings.user_management') }}">Käyttäjienhallinta</a></li>
-        </ul>
+        {% if has_role('Administrator') %}
+          <b class="mb-2 mt-4 ms-3 d-block">Järjestelmäasetukset</b>
+          <ul class="list-group">
+            <li class="list-group-item"><a href="{{ url_for('settings.user_management') }}">Käyttäjienhallinta</a></li>
+          </ul>
+        {% endif %}
       </div>
       <div class="col-md-9">
         <div class="card mt-4">

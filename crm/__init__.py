@@ -22,6 +22,10 @@ def create_app(test_config=None):
     def dashboard():
         return render_template('dashboard.html')
 
+    @app.context_processor
+    def inject_utils():
+        return dict(has_role=auth.has_role)
+
     app.register_blueprint(auth.blueprint)
     app.register_blueprint(settings.blueprint)
 
