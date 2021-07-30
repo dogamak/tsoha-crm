@@ -13,7 +13,7 @@ def settings():
 @blueprint.route('/settings/users')
 @require_role(UserRole.Administrator)
 def user_management():
-    users = User.query.all()
+    users = User.all()
 
     return render_template('settings-user-management.html', users=users)
 
@@ -44,16 +44,12 @@ def create_user_post():
         flash('Invalid role.', 'error')
         return redirect(url_for('settings.create_user'))
 
-    if User.query.filter_by(username=username).first() is not None:
+    if len(User.filter_by(username=username)) > 0:
         flash(f'User with username "{username}" already exists.', 'error')
         return redirect(url_for('settings.create_user'))
 
-    user = User(username=username, role=role)
-    user.set_password(request.form['password'])
-
-    db = crm.db.get_db()
-    db.session.add(user)
-    db.session.commit()
+    user = User(username=username, role=role, password=request.form['password'])
+    user.save()
 
     flash(f'User @{username} created successfully.', 'success')
     return redirect(url_for('settings.create_user'))

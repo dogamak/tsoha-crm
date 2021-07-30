@@ -40,7 +40,7 @@ def has_role(role):
     if 'user_id' not in session:
         return False
 
-    user = User.query.get(session['user_id'])
+    user = User.get(session['user_id'])
 
     return user is not None and user.role == role
 
@@ -58,13 +58,13 @@ def login_post():
     if 'username' not in request.form:
         return ''
 
-    user = User.query.filter_by(username=request.form['username']).first()
+    user = User.filter_by(username=request.form['username']).pop()
 
     if not user:
         flash('Invalid credentials', 'error')
         return redirect('/login')
 
-    if not user.check_password(request.form['password']):
+    if not user.fields.password.compare(request.form['password']):
         flash('Invalid credentials', 'error')
         return redirect('/login')
 
