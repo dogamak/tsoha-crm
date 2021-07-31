@@ -18,3 +18,7 @@ class User(BaseResource):
     password = PasswordField()
     role = ChoiceField(UserRole)
 
+    def title(self):
+        return self.username
+
+

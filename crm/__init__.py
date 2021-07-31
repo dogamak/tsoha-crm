@@ -22,6 +22,50 @@ def create_app(test_config=None):
     def dashboard():
         return render_template('dashboard.html')
 
+    @app.route('/view/<id>')
+    def view_resource(id):
+        from crm.models import Resource
+        resource = Resource.get_resource(id)
+        return render_template('view-resource.html', resource=resource)
+
+    @app.route('/edit/<id>')
+    def edit_resource(id):
+        from crm.models import Resource
+        resource = Resource.get_resource(id)
+        return render_template('edit-resource.html', resource=resource)
+
+    @app.route('/edit/<id>', methods=['POST'])
+    def edit_resource_post(id):
+        from crm.models import Resource
+        resource = Resource.get_resource(id)
+
+        if resource is None:
+            return redirect(url_for('not_found'))
+
+        for field in resource.fields:
+            if field.name not in request.form:
+                continue
+
+            new_value = request.form[field.name]
+
+            extra_arguments = {
+                param_name.split('.', 1)[1]: param_value
+                for param_name, param_value in request.form.items()
+                if param_name.startswith(field.name + '.')
+            }
+
+            try:
+                field.set(new_value, **extra_arguments)
+            except ValueError as e:
+                flash(str(e), 'error')
+                return redirect(url_for('edit_resource', id=resource.id))
+        
+        resource.save()
+
+        flash('Resource updated successfully!')
+        return redirect(url_for('view_resource', id=resource.id))
+
+
     @app.context_processor
     def inject_utils():
         return dict(has_role=auth.has_role)

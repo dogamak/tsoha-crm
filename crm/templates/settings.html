@@ -4,19 +4,25 @@
   Asetukset
 {% endblock %}
 
+{% macro nav_item(endpoint, label) %}
+  <li class="list-group-item {{ 'bg-light fw-bold' if request.endpoint.endswith(endpoint) else '' }}">
+    <a href="{{ url_for(endpoint) }}" style="text-decoration: none; color: black">{{label}}</a>
+  </li>
+{% endmacro %}
+
 {% block content %}
   <div class="container-sm">
     <div class="row">
       <div class="col-md-3">
         <b class="mb-2 mt-4 ms-3 d-block">Käyttäjäasetukset</b>
         <ul class="list-group">
-          <li class="list-group-item">Profiili</li>
+          {{ nav_item('settings.edit_profile', 'Profiili') }}
         </ul>
 
         {% if has_role('Administrator') %}
           <b class="mb-2 mt-4 ms-3 d-block">Järjestelmäasetukset</b>
           <ul class="list-group">
-            <li class="list-group-item"><a href="{{ url_for('settings.user_management') }}">Käyttäjienhallinta</a></li>
+            {{ nav_item('settings.user_management', 'Käyttäjienhallinta') }}
           </ul>
         {% endif %}
       </div>

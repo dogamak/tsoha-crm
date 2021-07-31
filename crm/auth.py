@@ -68,11 +68,11 @@ def login_post():
         flash('Invalid credentials', 'error')
         return redirect('/login')
 
-    session['user_id'] = user.id
+    session['user_id'] = user.instance.variant_id
 
     return redirect('/')
 
 @blueprint.route('/logout')
 def logout():
-    del session['user_id']
+    session.pop('user_id', None)
     return redirect('/login')

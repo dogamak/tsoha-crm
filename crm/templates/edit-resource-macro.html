@@ -1,0 +1,42 @@
+{% macro resource_edit_form(resource, action=false, redirect=false, id=false, no_submit_button=false) %}
+  <form id="{{id}}" action="{{ action if action is not false else url_for('edit_resource_post', id=resource.id) }}" method="POST">
+    {% if redirect is not false %}
+      <input type="hidden" value="{{redirect}}" name="__redirect" />
+    {% endif %}
+
+    {% for field in resource.fields %}
+      <div class="mb-3">
+        {% if field.widget == 'password' %}
+        <div class="row">
+          <div class="col">
+            <div class="text-secondary">{{ field.label }}</div>
+            <input type="password" name="{{field.name}}" class="form-control" />
+          </div>
+          <div class="col">
+            <div class="text-secondary">Confirm {{ field.label }}</div>
+            <input type="password" name="{{field.name}}.confirmation" class="form-control" />
+          </div>
+        </div>
+        {% else %}
+          <div class="col-md-6">
+            <div class="text-secondary">{{ field.label }}</div>
+            {% if field.widget == 'text' %}
+              <input type="text" class="form-control" name="{{field.name}}" value="{{field.get()}}" />
+            {% elif field.widget == 'choice' %}
+              <select class="form-select" name="{{field.name}}">
+                {% for option in field.variants %}
+                  <option value="{{option.value}}" {% if option.value == field.get().value %}selected{% endif %}>{{ option.value }}</option>
+                {% endfor %}
+              </select>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+
+    {% if not no_submit_button %}
+      <button class="btn btn-primary" type="submit">Tallenna</button>
+    {% endif %}
+  </form>
+{% endmacro %}
+

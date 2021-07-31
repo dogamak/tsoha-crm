@@ -1,14 +1,14 @@
-from flask import Blueprint, render_template, request, redirect, flash, url_for
+from flask import Blueprint, render_template, request, redirect, flash, url_for, session
 
 import crm.db
-from crm.auth import require_role
+from crm.auth import require_role, require_auth
 from crm.models.user import User, UserRole
 
 blueprint = Blueprint('settings', __name__)
 
 @blueprint.route('/settings')
 def settings():
-    return render_template('settings.html')
+    return redirect(url_for('settings.edit_profile'))
 
 @blueprint.route('/settings/users')
 @require_role(UserRole.Administrator)
@@ -53,3 +53,9 @@ def create_user_post():
 
     flash(f'User @{username} created successfully.', 'success')
     return redirect(url_for('settings.create_user'))
+
+@blueprint.route('/settings/profile')
+@require_auth
+def edit_profile():
+    user = User.get(session['user_id'])
+    return render_template("settings-profile.html", user=user)
