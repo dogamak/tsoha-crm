@@ -5,7 +5,7 @@
     <div class="card-header">
       <div class="d-flex align-items-center justify-content-between">
         <span>Käyttäjät</span>
-        <a class="btn btn-sm btn-primary" href="{{ url_for('settings.create_user') }}">Luo uusi käyttäjä</a>
+        <a class="btn btn-sm btn-primary" href="{{ url_for('create_resource', type='user') }}">Luo uusi käyttäjä</a>
       </div>
     </div>
     <div>
@@ -21,7 +21,7 @@
     <div class="card-footer">
       <div class="d-flex align-items-center justify-content-between">
         <div></div>
-        <a class="btn btn-sm btn-primary" href="{{ url_for('settings.create_user') }}">Luo uusi käyttäjä</a>
+        <a class="btn btn-sm btn-primary" href="{{ url_for('create_resource', type='user') }}">Luo uusi käyttäjä</a>
       </div>
     </div>
   </div>

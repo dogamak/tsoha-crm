@@ -44,6 +44,12 @@ class TextField(Field):
 
         super().__init__(db.String, *args, widget=widget, **kwargs)
 
+    def from_storage(self, value):
+        if value is None:
+            return ''
+
+        return value
+
 
 class PasswordField(Field):
     def __init__(self, *args, widget=None, **kwargs):
@@ -97,10 +103,13 @@ class ChoiceField(Field):
 
 
     def from_storage(self, value):
+        if value is None:
+            return None
+
         if issubclass(self.variants, Enum):
             return self.variants(value)
-        else:
-            return value
+
+        return value
 
 
 def isfield(value):
@@ -149,10 +158,18 @@ def create_resource_table():
             return cls(**columns)
 
         raise ValueError('not an instance of a known resource class')
+
+    def get_type(name):
+        for c in resource_classes:
+            if name.lower() == c.__name__.lower():
+                return c
+
+        return None
         
 
     setattr(cls, 'get_resource', get_resource)
     setattr(cls, 'from_instance', from_instance)
+    setattr(cls, 'get_type', get_type)
 
     return cls
 
