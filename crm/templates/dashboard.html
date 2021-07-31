@@ -4,7 +4,7 @@
   <div class="d-flex align-items-center justify-content-between">
     <div>Dashboard</div>
     <div>
-      <button class="btn btn-light">Luo asiakas</button>
+      <a class="btn btn-light" href="{{ url_for('create_resource', type='account') }}">Luo asiakas</a>
     </div>
   </div>
 {% endblock %}
@@ -14,57 +14,14 @@
   <div class="row">
     <div class="col-md-4 px-4">
       <h3>Asiakkaasi</h3>
-      <div class="card mb-3 mt-3">
-        <div class="card-body">
-          <b>TKO-äly ry</b>
-          <div class="mt-2">Helsingin Yliopiston tietojenkäsittelytieteen ainejärjestö</div>
+      {% for account in accounts %}
+        <div class="card mb-3 mt-3" style="cursor: pointer" onclick="window.location = '{{ url_for('view_resource', id=account.id) }}'">
+          <div class="card-body">
+            <b>{{ account.title() }}</b>
+            <div class="mt-2">{{ account.description }}</div>
+          </div>
         </div>
-      </div>
-
-      <div class="card">
-        <div class="card-body">
-          <b>Google</b>
-          <div class="mt-2">Johtava hakukonepalveluntarjoaja</div>
-        </div>
-      </div>
-
-      <div class="card mb-3 mt-3">
-        <div class="card-body">
-          <b>TKO-äly ry</b>
-          <div class="mt-2">Helsingin Yliopiston tietojenkäsittelytieteen ainejärjestö</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-body">
-          <b>Google</b>
-          <div class="mt-2">Johtava hakukonepalveluntarjoaja</div>
-        </div>
-      </div>
-
-      <div class="card mb-3 mt-3">
-        <div class="card-body">
-          <b>TKO-äly ry</b>
-          <div class="mt-2">Helsingin Yliopiston tietojenkäsittelytieteen ainejärjestö</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-body">
-          <b>Google</b>
-          <div class="mt-2">Johtava hakukonepalveluntarjoaja</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-4 px-4">
-      <h3>Avoimet mahdollisuudet</h3>
-      <div class="card mt-3">
-        <div class="card-body">
-          <b>Google<span style="margin: 0 0.5em; color: #888">▸</span>Mahdollisuus</b>
-          <div class="mt-2">Ovat mahdollisesti kiinnostuneita ostamaan asiaa <i>XYZ</i>.</div>
-        </div>
-        <div class="card-footer">Kolme päivää sitten</div>
-      </div>
+      {% endfor %}
     </div>
   </div>
 </div>

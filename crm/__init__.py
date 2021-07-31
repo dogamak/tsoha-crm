@@ -4,7 +4,7 @@ import toml
 import crm.settings
 import crm.auth
 import crm.db
-from crm.models import Resource
+from crm.models import Account, Resource
 
 def create_app(test_config=None):
     app = Flask(__name__)
@@ -21,7 +21,7 @@ def create_app(test_config=None):
     @app.route('/')
     @auth.require_auth
     def dashboard():
-        return render_template('dashboard.html')
+        return render_template('dashboard.html', accounts=Account.all())
 
     @app.route('/view/<id>')
     def view_resource(id):

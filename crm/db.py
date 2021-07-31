@@ -27,14 +27,9 @@ def init_db_command():
 @click.option('--password', prompt=True, hide_input=True, confirmation_prompt=True)
 @with_appcontext
 def create_admin_command(username, password):
-    db = get_db()
-
-    from crm.models import User
-    admin = User(username=username)
-    admin.set_password(password)
-
-    db.session.add(admin)
-    db.session.commit()
+    from crm.models.user import User, UserRole
+    admin = User(username=username, password=password, role=UserRole.Administrator)
+    admin.save()
 
     print(f'Administrator user account "{username}" created.')
     
