@@ -12,7 +12,19 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-sm d-flex justify-content-center">
+<div class="container-sm d-flex">
+  <div class="col-md-3 m-4 m-4 text-end">
+    <b>Created by</b><br />
+    <a href="{{ url_for('view_resource', id=resource.created_by.id) }}">{{ resource.created_by.title() }}</a>
+    <br/><br/>
+    <b>Assigned to</b><br />
+    <ul>
+      {% for user in resource.assigned_users %}
+      <li><a href="{{ url_for('view_resource', id=user.id) }}">{{ user.title() }}</a> <a href="{{ url_for('unassign_resource', resource_id=resource.id, user_id=user.id) }}">[Unassign]</a></li>
+      {% endfor %}
+    </ul>
+    <a href="" data-bs-toggle="modal" data-bs-target="#assign-modal">Add user</a>
+  </div>
   <div class="card mt-4 col-md-6">
     <div class="card-body">
       {% for field in resource.fields %}
@@ -27,6 +39,31 @@
           {% endif %}
         </div>
       {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="assign-modal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5>Assign a new user</h5>
+        <button type="button" class="btn-close"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="{{ url_for('assign_resource', id=resource.id) }}" id="assign-form">
+          <label class="text-secondary">Select user for assignment</label>
+          <select class="form-select" name="user">
+            {% for user in users %}
+            <option value="{{ user.id }}">{{ user.title() }}</option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="document.getElementById('assign-form').submit()">Assign</button>
+      </div>
     </div>
   </div>
 </div>

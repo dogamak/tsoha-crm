@@ -2,6 +2,7 @@ from crm.db import db
 
 import inspect
 from sqlalchemy import event
+from sqlalchemy.orm import declared_attr
 from flask_sqlalchemy.model import DefaultMeta
 
 from enum import Enum
@@ -120,6 +121,15 @@ def isfield(value):
 resource_classes = []
 
 
+class ResourceUserAssignment(db.Model):
+    __tablename__ = 'resource_user'
+
+    user_id = db.Column(db.Integer, primary_key=True)
+    resource_id = db.Column(db.Integer, db.ForeignKey('resource.id'), primary_key=True)
+    assigned_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    assigned_at = db.Column(db.DateTime)
+
+
 def create_resource_table():
     properties = dict(
         id = db.Column(db.Integer, primary_key=True),
@@ -128,7 +138,7 @@ def create_resource_table():
     for cls in resource_classes:
         column_name = cls.model.__tablename__ + '_id'
         properties[column_name] = db.Column(db.Integer, db.ForeignKey(getattr(cls.model, 'variant_id')))
-        properties[cls.model.__tablename__] = db.relationship(cls.model, back_populates='_resource')
+        properties[cls.model.__tablename__] = db.relationship(cls.model, back_populates='_resource', foreign_keys='Resource.'+column_name)
 
     cls = DefaultMeta('Resource', (db.Model,), properties)
 
@@ -186,9 +196,24 @@ class ResourceMeta(type):
         if d.get('__abstract__', False):
             return inst
 
+        created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+        deleted_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+        variant_id = db.Column('id', db.Integer, primary_key=True)
+
         model_dict = dict(
-            variant_id = db.Column('id', db.Integer, primary_key=True),
-            _resource = db.relationship('Resource', uselist=False),
+            variant_id = variant_id,
+            created_by_id = created_by_id,
+            deleted_by_id = deleted_by_id,
+            created_by = db.relationship('User', foreign_keys=[created_by_id], uselist=False),
+            deleted_by = db.relationship('User', foreign_keys=[deleted_by_id], uselist=False),
+            _resource = db.relationship('Resource', foreign_keys='Resource.' + inst.__name__.lower() + '_id', uselist=False),
+            assigned_users = db.relationship(
+                'User',
+                secondary='join(Resource, ResourceUserAssignment)',
+                primaryjoin=f'{inst.__name__}.variant_id == Resource.{inst.__name__.lower()}_id',
+                secondaryjoin='ResourceUserAssignment.user_id == User.variant_id',
+                uselist=True,
+            ),
         )
 
         for name, value in vars(inst).items():
@@ -268,6 +293,19 @@ class BaseResource(metaclass=ResourceMeta):
     def get_id(self):
         return self.instance._resource.id
 
+    def set_created_by(self, user):
+        self._set_field('created_by', user.instance)
+
+    @property
+    def created_by(self):
+        from crm.models import User
+        return User(from_instance=self.instance.created_by)
+
+    @property
+    def assigned_users(self):
+        from crm.models import User
+        return [ User(from_instance=i) for i in self.instance.assigned_users ]
+
     @classmethod
     def all(cls, *args, **kwargs):
         return [ cls(from_instance=i) for i in cls.model.query.all(*args, **kwargs) ]
@@ -291,18 +329,42 @@ class BaseResource(metaclass=ResourceMeta):
         if name == 'id':
             return self.get_id()
 
+        if name == 'created_by':
+            from crm.models import User
+            return User(from_instance=self.instance.created_by)
+
         if name in self.dirty:
             value = self.dirty[name]
         else:
             value = getattr(self.instance, name)
 
-        return self._fields[name].from_storage(value)
+        try:
+            return self._fields[name].from_storage(value)
+        except KeyError:
+            return getattr(self.instance, name)
 
     def _set_field(self, name, value):
         self.dirty[name] = value
 
     def __setattr__(self, name, value):
         self._fields[name].on_set(self, value)
+
+    def assign_to(self, user):
+        from crm.models import User
+        if isinstance(user, User):
+            user = user.instance
+
+        secondary = ResourceUserAssignment(user_id=user.variant_id, resource_id=self.id)
+        db.session.add(secondary)
+        db.session.commit()
+
+    def unassign_from(self, user):
+        from crm.models import User
+        if isinstance(user, User):
+            user = user.instance
+
+        ResourceUserAssignment.query.filter_by(user_id=user.variant_id, resource_id=self.id).delete()
+        db.session.commit()
 
     def save(self):
         for name, value in self.dirty.items():

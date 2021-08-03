@@ -4,7 +4,7 @@ import toml
 import crm.settings
 import crm.auth
 import crm.db
-from crm.models import Account, Resource
+from crm.models import Account, Resource, User
 
 def create_app(test_config=None):
     app = Flask(__name__)
@@ -27,7 +27,23 @@ def create_app(test_config=None):
     def view_resource(id):
         from crm.models import Resource
         resource = Resource.get_resource(id)
-        return render_template('view-resource.html', resource=resource)
+        return render_template('view-resource.html', resource=resource, users=User.all())
+
+    @app.route('/edit/<id>/assign', methods=['POST'])
+    def assign_resource(id):
+        from crm.models import Resource
+        resource = Resource.get_resource(id)
+        user = Resource.get_resource(request.form['user'])
+        resource.assign_to(user)
+        return redirect(url_for('view_resource', id=resource.id))
+
+    @app.route('/edit/<resource_id>/unassign/<user_id>')
+    def unassign_resource(resource_id, user_id):
+        from crm.models import Resource
+        resource = Resource.get_resource(resource_id)
+        user = Resource.get_resource(user_id)
+        resource.unassign_from(user)
+        return redirect(url_for('view_resource', id=resource.id))
 
     @app.route('/edit/<id>')
     def edit_resource(id):
@@ -76,6 +92,9 @@ def create_app(test_config=None):
     @app.route('/create/<type>', methods=['POST'])
     def create_resource_post(type):
         resource = Resource.get_type(type)()
+
+        user = User.get(session['user_id'])
+        resource.set_created_by(user)
 
         for field in resource.fields:
             if field.name not in request.form:

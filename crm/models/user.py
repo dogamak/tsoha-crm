@@ -10,13 +10,11 @@ class UserRole(Enum):
     Sales = 'Sales'
 
 class User(BaseResource):
-    # id = db.Column(db.Integer, primary_key=True)
-    # username = db.Column(db.String, unique=True, nullable=False)
-    # role = db.Column(db.Enum(UserRole), nullable=False)
-    # password_hash = db.Column(db.String)
     username = TextField(unique=True)
     password = PasswordField()
     role = ChoiceField(UserRole)
+
+    assigned_resources = db.relationship('Resource', secondary='resource_user')
 
     def title(self):
         return self.username

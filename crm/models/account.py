@@ -1,5 +1,6 @@
 from .resource import BaseResource, TextField
 
+
 class Account(BaseResource):
     name = TextField()
     description = TextField()
