@@ -1,21 +1,28 @@
 from crm.db import db
+from crm.access import AccessType, AccessControlList, AccessControlGroup
 
 import inspect
 from sqlalchemy import event
 from sqlalchemy.orm import declared_attr
 from flask_sqlalchemy.model import DefaultMeta
+from flask import session
 
 from enum import Enum
 from werkzeug.security import check_password_hash, generate_password_hash
 
+
 class Field:
-    def __init__(self, column_type, *args, label=None, widget=None, **kwargs):
+    def __init__(self, column_type, *args, label=None, widget=None, acl=None, **kwargs):
         self.name = None
         self.resource = None
         self.label = label
         self.widget = widget
         self.column_type = column_type
         self.column = db.Column(column_type, *args, **kwargs)
+        self.acl = acl or AccessControlList()
+
+    def check_access(self, resource, user, access_type):
+        return self.acl.check(resource, user, access_type)
 
     def to_storage(self, value):
         return value
@@ -176,7 +183,6 @@ def create_resource_table():
 
         return None
         
-
     setattr(cls, 'get_resource', get_resource)
     setattr(cls, 'from_instance', from_instance)
     setattr(cls, 'get_type', get_type)
@@ -252,6 +258,11 @@ class BoundField:
     def compare(self, value):
         return self.field.compare(getattr(self.resource.instance, self.field.name), value)
 
+    def check_access(self, access_type):
+        from crm.models import User
+        user = User.get(session['user_id'])
+        return self.field.check_access(self.resource, user, access_type)
+
     def __getattr__(self, name):
         return getattr(self.field, name)
 
@@ -261,6 +272,9 @@ class BoundFields:
         self.resource = resource
 
     def __iter__(self):
+        from crm.models import User
+        user = User.get(session['user_id'])
+
         for field in self.resource._fields.values():
             yield BoundField(self.resource, field)
 
@@ -274,8 +288,16 @@ class BoundFields:
         return self[name]
 
 
+class Section:
+    def __init__(self, label, fields):
+        self.label = label
+        self.fields = fields
+
+
 class BaseResource(metaclass=ResourceMeta):
     __abstract__ = True
+    __acl__ = None
+    __layout__ = None
 
     def __init__(self, from_instance=None, **kwargs):
         instance = from_instance
@@ -287,8 +309,19 @@ class BaseResource(metaclass=ResourceMeta):
         object.__setattr__(self, 'dirty', dict())
         object.__setattr__(self, 'fields', BoundFields(self))
 
+        if self.__acl__ is None:
+            object.__setattr__(self, '__acl__', AccessControlList('r=sAaOg,w=sAaO,d=Oa,d=o'))
+
         for name, value in kwargs.items():
             setattr(self, name, value)
+
+    @property
+    def layout(self):
+        if self.__layout__ is None:
+            yield Section(None, self.fields)
+        else:
+            for section in self.__layout__:
+                yield Section(section.label, [ BoundField(self, field) for field in section.fields ])
 
     def get_id(self):
         return self.instance._resource.id
@@ -323,7 +356,13 @@ class BaseResource(metaclass=ResourceMeta):
         return [ cls(from_instance=i) for i in cls.model.query.from_statement(*args, **kwargs).all() ]
 
     def title(self):
-        return self.id
+        return self.__class__.__name__ + ' #' + self.id
+
+    def check_access(self, user, access_type):
+        return self.__acl__.check(self, user, access_type)
+
+    def __eq__(self, other):
+        return self.instance.variant_id == other.instance.variant_id
 
     def __getattr__(self, name):
         if name == 'id':

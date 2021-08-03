@@ -57,3 +57,15 @@
 .user-management-table tr:last-child td {
   border-bottom: none;
 }
+
+.resource-section-label {
+  margin: 0rem -1rem 0.5rem -1rem;
+  border-top: 1px solid #dfdfdf;
+  padding: 0.25rem 1rem 0 1rem;
+  font-size: 0.8rem;
+}
+
+.resource-section:first-child .resource-section-label {
+  margin-top: -0.75rem;
+  border-top: none;
+}

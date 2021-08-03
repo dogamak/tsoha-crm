@@ -1,6 +1,6 @@
 {% extends "settings.html" %}
 
-{% from "edit-resource-macro.html" import resource_edit_form %}
+{% from "edit-resource-macro.html" import resource_edit_form with context %}
 
 {% block settings_content %}
   {{ resource_edit_form(user) }}

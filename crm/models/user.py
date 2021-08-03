@@ -1,4 +1,7 @@
 from crm.db import db
+from crm.models.resource import Section
+from crm.access import AccessControlList, AccessControlGroup
+
 from enum import Enum
 
 from .resource import BaseResource, TextField, PasswordField, ChoiceField
@@ -10,13 +13,13 @@ class UserRole(Enum):
     Sales = 'Sales'
 
 class User(BaseResource):
+    __acl__ = AccessControlList('r=o,w=sAO,d=AO,c=A')
+
     username = TextField(unique=True)
-    password = PasswordField()
-    role = ChoiceField(UserRole)
+    password = PasswordField(acl=AccessControlList('w=As'))
+    role = ChoiceField(UserRole, acl=AccessControlList('w=A'))
 
     assigned_resources = db.relationship('Resource', secondary='resource_user')
 
     def title(self):
         return self.username
-
-

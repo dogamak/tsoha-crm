@@ -4,33 +4,42 @@
       <input type="hidden" value="{{redirect}}" name="__redirect" />
     {% endif %}
 
-    {% for field in resource.fields %}
-      <div class="mb-3">
-        {% if field.widget == 'password' %}
-        <div class="row">
-          <div class="col">
-            <div class="text-secondary">{{ field.label }}</div>
-            <input type="password" name="{{field.name}}" class="form-control" />
-          </div>
-          <div class="col">
-            <div class="text-secondary">Confirm {{ field.label }}</div>
-            <input type="password" name="{{field.name}}.confirmation" class="form-control" />
-          </div>
-        </div>
-        {% else %}
-          <div class="col-md-6">
-            <div class="text-secondary">{{ field.label }}</div>
-            {% if field.widget == 'text' %}
-              <input type="text" class="form-control" name="{{field.name}}" value="{{field.get()}}" />
-            {% elif field.widget == 'choice' %}
-              <select class="form-select" name="{{field.name}}">
-                {% for option in field.variants %}
-                  <option value="{{option.value}}" {% if option.value == field.get().value %}selected{% endif %}>{{ option.value }}</option>
-                {% endfor %}
-              </select>
-            {% endif %}
-          </div>
+    {% for section in resource.layout %}
+      <div class="mb-3 resource-section">
+        {% if section.label %}
+          <div class="text-secondary resource-section-label">{{ section.label }}</div>
         {% endif %}
+        <div class="resource-section-body">
+          {% for field in section.fields if field.check_access(AccessType.Write) %}
+            <div class="mb-3">
+              {% if field.widget == 'password' %}
+              <div class="row">
+                <div class="col">
+                  <div class="text-secondary">{{ field.label }}</div>
+                  <input type="password" name="{{field.name}}" class="form-control" />
+                </div>
+                <div class="col">
+                  <div class="text-secondary">Confirm {{ field.label }}</div>
+                  <input type="password" name="{{field.name}}.confirmation" class="form-control" />
+                </div>
+              </div>
+              {% else %}
+                <div class="col-md-6">
+                  <div class="text-secondary">{{ field.label }}</div>
+                  {% if field.widget == 'text' %}
+                    <input type="text" class="form-control" name="{{field.name}}" value="{{field.get()}}" />
+                  {% elif field.widget == 'choice' %}
+                    <select class="form-select" name="{{field.name}}">
+                      {% for option in field.variants %}
+                        <option value="{{option.value}}" {% if option.value == field.get().value %}selected{% endif %}>{{ option.value }}</option>
+                      {% endfor %}
+                    </select>
+                  {% endif %}
+                </div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
       </div>
     {% endfor %}
 

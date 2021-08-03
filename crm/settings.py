@@ -3,6 +3,7 @@ from flask import Blueprint, render_template, request, redirect, flash, url_for,
 import crm.db
 from crm.auth import require_role, require_auth
 from crm.models.user import User, UserRole
+from crm.access import AccessType
 
 blueprint = Blueprint('settings', __name__)
 
@@ -58,4 +59,4 @@ def create_user_post():
 @require_auth
 def edit_profile():
     user = User.get(session['user_id'])
-    return render_template("settings-profile.html", user=user)
+    return render_template("settings-profile.html", user=user, AccessType=AccessType)

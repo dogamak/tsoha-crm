@@ -33,6 +33,9 @@ def require_role(role):
 
     return decorator
 
+def get_session_user():
+    return User.get(session['user_id'])
+
 def has_role(role):
     if isinstance(role, str):
         role = UserRole(role)
