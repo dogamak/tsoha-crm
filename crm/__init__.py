@@ -180,7 +180,7 @@ def create_app(test_config=None):
     @app.context_processor
     def inject_utils():
         user = User.get(session['user_id']) if 'user_id' in session else None
-        return dict(has_role=auth.has_role, session_user=user)
+        return dict(has_role=auth.has_role, session_user=user, AccessType=AccessType)
 
     app.register_blueprint(auth.blueprint)
     app.register_blueprint(settings.blueprint)

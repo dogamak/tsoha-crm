@@ -336,7 +336,7 @@ class BaseResource(metaclass=ResourceMeta):
         object.__setattr__(self, 'fields', BoundFields(self))
 
         if self.__acl__ is None:
-            object.__setattr__(self, '__acl__', AccessControlList('r=sAaOg,w=sAaO,d=Oa,d=o'))
+            object.__setattr__(self, '__acl__', AccessControlList('r=sAaOg,w=sAaO,d=Oa,c=o'))
 
         for name, value in kwargs.items():
             setattr(self, name, value)
