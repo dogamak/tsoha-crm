@@ -36,6 +36,8 @@
           <div class="badge bg-light text-secondary">Hidden</div>
           {% elif field.widget == 'choice' %}
           <div class="badge bg-secondary">{{ field.get().value }}</div>
+          {% elif field.widget == 'image' %}
+          <img src="{{ field.get().get_url() }}" class="col-4" />
           {% endif %}
         </div>
       {% endfor %}

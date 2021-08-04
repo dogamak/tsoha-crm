@@ -120,6 +120,32 @@ class ChoiceField(Field):
         return value
 
 
+class FileField(Field):
+    def __init__(self, *args, **kwargs):
+        if 'widget' not in kwargs:
+            kwargs['widget'] = 'image'
+        
+        super().__init__(db.String, db.ForeignKey('file.hash'), *args, **kwargs)
+
+    def from_storage(self, hash):
+        from crm.models import File
+        return File.query.get(hash)
+
+    def to_storage(self, value):
+        print('to_storage', value)
+        db.session.add(value)
+        return value.hash
+
+    def on_set(self, instance, value):
+        if value.filename == '':
+            return
+
+        from crm.models import File
+        print('create_from', type(value), value)
+        file = File.create_from(value.stream, name=value.filename)
+        super().on_set(instance, file)
+
+
 def isfield(value):
     print(value)
     return isinstance(value, Field)

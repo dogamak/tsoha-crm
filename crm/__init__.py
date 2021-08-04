@@ -89,6 +89,8 @@ def create_app(test_config=None):
         from crm.models import Resource
         resource = Resource.get_resource(id)
 
+        print(request.files, request.form)
+
         if resource is None:
             return redirect(url_for('not_found'))
 
@@ -96,10 +98,12 @@ def create_app(test_config=None):
             return not_found()
 
         for field in resource.fields:
-            if field.name not in request.form:
+            if field.name in request.files:
+                new_value = request.files[field.name]
+            elif field.name in request.form:
+                new_value = request.form[field.name]
+            else:
                 continue
-
-            new_value = request.form[field.name]
 
             extra_arguments = {
                 param_name.split('.', 1)[1]: param_value
@@ -139,10 +143,12 @@ def create_app(test_config=None):
         resource.set_created_by(user)
 
         for field in resource.fields:
-            if field.name not in request.form:
+            if field.name in request.files:
+                new_value = request.files[field.name]
+            elif field.name in request.form:
+                new_value = request.form[field.name]
+            else:
                 continue
-
-            new_value = request.form[field.name]
 
             extra_arguments = {
                 param_name.split('.', 1)[1]: param_value
@@ -161,10 +167,20 @@ def create_app(test_config=None):
         flash('Resource created successfully!')
         return redirect(url_for('view_resource', id=resource.id))
 
+    @app.route('/file/<hash>/<name>')
+    def serve_file(hash, name):
+        from crm.models import File
+        file = File.query.get(hash)
+
+        if file is None:
+            return not_found()
+
+        return file.content
 
     @app.context_processor
     def inject_utils():
-        return dict(has_role=auth.has_role)
+        user = User.get(session['user_id']) if 'user_id' in session else None
+        return dict(has_role=auth.has_role, session_user=user)
 
     app.register_blueprint(auth.blueprint)
     app.register_blueprint(settings.blueprint)

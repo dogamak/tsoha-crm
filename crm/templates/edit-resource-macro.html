@@ -1,5 +1,5 @@
 {% macro resource_edit_form(resource, action=false, redirect=false, id=false, no_submit_button=false) %}
-  <form id="{{id}}" action="{{ action if action is not false else url_for('edit_resource_post', id=resource.id) }}" method="POST">
+  <form id="{{id}}" action="{{ action if action is not false else url_for('edit_resource_post', id=resource.id) }}" method="POST" enctype="multipart/form-data">
     {% if redirect is not false %}
       <input type="hidden" value="{{redirect}}" name="__redirect" />
     {% endif %}
@@ -24,7 +24,7 @@
                 </div>
               </div>
               {% else %}
-                <div class="col-md-6">
+                <div class="col-md-{{ '12' if field.widget in ['image'] else '6' }}">
                   <div class="text-secondary">{{ field.label }}</div>
                   {% if field.widget == 'text' %}
                     <input type="text" class="form-control" name="{{field.name}}" value="{{field.get()}}" />
@@ -34,6 +34,17 @@
                         <option value="{{option.value}}" {% if option.value == field.get().value %}selected{% endif %}>{{ option.value }}</option>
                       {% endfor %}
                     </select>
+                  {% elif field.widget == 'image' %}
+                    <div class="row">
+                      {% if field.get() %}
+                        <div class="col-4">
+                          <img src="{{ field.get().get_url() }}" class="w-100" />
+                        </div>
+                      {% endif %}
+                      <div class="col">
+                        <input type="file" name="{{field.name}}" accept="image/*" />
+                      </div>
+                    </div>
                   {% endif %}
                 </div>
               {% endif %}
