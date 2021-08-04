@@ -1,3 +1,0 @@
-SQLALCHEMY_DATABASE_URI = "postgresql://postgres:tsoha@localhost/postgres"
-SQLALCHEMY_TRACK_MODIFICATIONS = false
-SECRET_KEY = 'topsecret123'

@@ -3,10 +3,10 @@ import toml
 
 from sqlalchemy import select
 
-import os
 import crm.settings
 import crm.auth
 import crm.db
+from crm.config import get_config
 from crm.models import Account, Resource, User
 from crm.models.resource import ResourceUserAssignment
 from crm.access import AccessType
@@ -17,10 +17,7 @@ def not_found():
 def create_app(test_config=None):
     app = Flask(__name__)
 
-    app.config.from_file('config.toml', load=toml.load)
-
-    if 'DATABASE_URL' in os.environ:
-        app.config['DATABASE_URL'] = os.environ['DATABASE_URL']
+    app.config.from_object(get_config(app))
 
     db.init_app(app)
 
