@@ -20,15 +20,17 @@
         </form>
         <div class="col-md-3 text-end">
           {% block navbar_right %}
-            <div class="dropdown d-inline-block">
-              <a href="#" class="dropdown-toggle text-white" style="text-decoration: none" data-bs-toggle="dropdown" data-bs-offset="100,100">
-                <div class="rounded-circle navbar-avatar" style="background-size: cover; background-position: center; background-image: url('{{ session_user.avatar.get_url() }}')"></div>
-              </a>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li><a class="dropdown-item" href="{{ url_for('settings.settings') }}">Asetukset</a></li>
-                <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Kirjaudu ulos</a></li>
-              </ul>
-            </div>
+            {% if session_user %}
+              <div class="dropdown d-inline-block">
+                <a href="#" class="dropdown-toggle text-white" style="text-decoration: none" data-bs-toggle="dropdown" data-bs-offset="100,100">
+                  <div class="rounded-circle navbar-avatar" style="background-size: cover; background-position: center; background-image: url('{{ session_user.avatar.get_url() }}')"></div>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="{{ url_for('settings.settings') }}">Asetukset</a></li>
+                  <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Kirjaudu ulos</a></li>
+                </ul>
+              </div>
+            {% endif %}
           {% endblock %}
         </div>
       </div>
