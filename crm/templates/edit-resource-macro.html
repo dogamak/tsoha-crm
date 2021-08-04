@@ -1,5 +1,5 @@
 {% macro resource_edit_form(resource, action=false, redirect=false, id=false, no_submit_button=false) %}
-  <form id="{{id}}" action="{{ action if action is not false else url_for('edit_resource_post', id=resource.id) }}" method="POST" enctype="multipart/form-data">
+  <form id="{{id}}" action="{{ action if action is not false else url_for('resource.edit_post', id=resource.id) }}" method="POST" enctype="multipart/form-data">
     {% if redirect is not false %}
       <input type="hidden" value="{{redirect}}" name="__redirect" />
     {% endif %}

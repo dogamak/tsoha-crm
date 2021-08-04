@@ -4,7 +4,7 @@
   <div class="d-flex align-items-center justify-content-between">
     <div>Dashboard</div>
     <div>
-      <a class="btn btn-light" href="{{ url_for('create_resource', type='account') }}">Luo asiakas</a>
+      <a class="btn btn-light" href="{{ url_for('resource.create', type='account') }}">Luo asiakas</a>
     </div>
   </div>
 {% endblock %}
@@ -15,7 +15,7 @@
     <div class="col-md-4 px-4">
       <h3>Asiakkaasi</h3>
       {% for account in accounts %}
-        <div class="card mb-3 mt-3" style="cursor: pointer" onclick="window.location = '{{ url_for('view_resource', id=account.id) }}'">
+        <div class="card mb-3 mt-3" style="cursor: pointer" onclick="window.location = '{{ url_for('resource.view', id=account.id) }}'">
           <div class="card-body">
             <b>{{ account.title() }}</b>
             <div class="mt-2">{{ account.description }}</div>

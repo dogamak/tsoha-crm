@@ -1,12 +1,9 @@
-from crm.db import db
-from crm.models.resource import Section
-from crm.access import AccessControlList, AccessControlGroup
-
 from enum import Enum
 
-from .resource import BaseResource, FileField, TextField, PasswordField, ChoiceField
-
-from werkzeug.security import generate_password_hash, check_password_hash
+from crm.access import AccessControlList, AccessControlGroup
+from crm.db import db
+from crm.fields import FileField, TextField, PasswordField, ChoiceField
+from crm.models.resource import Section, BaseResource
 
 class UserRole(Enum):
     Administrator = 'Administrator'

@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, flash, url_for, session
 
-import crm.db
 from crm.auth import require_role, require_auth
 from crm.models.user import User, UserRole
 from crm.access import AccessType

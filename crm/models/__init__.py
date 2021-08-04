@@ -1,6 +1,6 @@
 from .user import User
 from .account import Account
 from .file import File
-from .resource import create_resource_table
+from .resource import BaseResource
 
-Resource = create_resource_table()
+Resource = BaseResource.create_resource_table()

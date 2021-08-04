@@ -5,7 +5,7 @@
     <div class="card-header">
       <div class="d-flex align-items-center justify-content-between">
         <span>Käyttäjät</span>
-        <a class="btn btn-sm btn-primary" href="{{ url_for('create_resource', type='user') }}">Luo uusi käyttäjä</a>
+        <a class="btn btn-sm btn-primary" href="{{ url_for('resource.create', type='user') }}">Luo uusi käyttäjä</a>
       </div>
     </div>
     <div>
@@ -13,7 +13,7 @@
         {% for user in users %}
         <tr>
           <td style="width: 2.54rem" class="text-center border-end"><input type="checkbox" /></td>
-          <td><a href="{{ url_for('view_resource', id=user.id) }}">{{user.username}}</a> <span class="badge bg-secondary">{{user.role.value}}</span></td>
+          <td><a href="{{ url_for('resource.view', id=user.id) }}">{{user.username}}</a> <span class="badge bg-secondary">{{user.role.value}}</span></td>
         </tr>
         {% endfor %}
       </table>
@@ -21,7 +21,7 @@
     <div class="card-footer">
       <div class="d-flex align-items-center justify-content-between">
         <div></div>
-        <a class="btn btn-sm btn-primary" href="{{ url_for('create_resource', type='user') }}">Luo uusi käyttäjä</a>
+        <a class="btn btn-sm btn-primary" href="{{ url_for('resource.create', type='user') }}">Luo uusi käyttäjä</a>
       </div>
     </div>
   </div>

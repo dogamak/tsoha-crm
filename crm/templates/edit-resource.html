@@ -4,7 +4,7 @@
 
 {% block details %}
 <div class="d-flex justify-content-between align-items-center">
-  <div>{{ resource.__class__.__name__ }} / <a href="{{ url_for('view_resource', id=resource.id) }}">{{ resource.title() }}</a> / Muokkaa</div>
+  <div>{{ resource.__class__.__name__ }} / <a href="{{ url_for('resource.view', id=resource.id) }}">{{ resource.title() }}</a> / Muokkaa</div>
   <div>
     <button class="btn btn-primary" onclick="document.getElementById('resource-edit-form').submit()">Tallenna</button>
   </div>

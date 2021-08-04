@@ -1,4 +1,5 @@
-from .resource import BaseResource, TextField
+from crm.models.resource import BaseResource
+from crm.fields import TextField
 
 
 class Account(BaseResource):
