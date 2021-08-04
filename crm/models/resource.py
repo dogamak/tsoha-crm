@@ -8,6 +8,10 @@ from flask import session
 
 
 class ResourceUserAssignment(db.Model):
+    """
+    A secondary join table which represents a many-to-many relationship between resources and users.
+    """
+
     __tablename__ = 'resource_user'
 
     user_id = db.Column(db.Integer, primary_key=True)
@@ -17,10 +21,21 @@ class ResourceUserAssignment(db.Model):
 
 
 class ResourceModelBase(db.Model):
+    """
+    Base class for the database table model which combines all the
+    different types of resources using foreign key references.
+    """
+
+    # This tells SQLAlchemy that this class is not a concrete database model.
     __abstract__ = True
 
     @classmethod
     def get_resource(cls, id):
+        """
+        Fetches a resource from the database based on it's ID and wraps
+        it in a class appropriate for it's resource type.
+        """
+
         resource = cls.query.get(id)
 
         if resource is None:
@@ -37,6 +52,10 @@ class ResourceModelBase(db.Model):
 
     @classmethod
     def from_instance(cls, obj):
+        """
+        Wraps an SQLAlchemy object in an appropriate resource subclass.
+        """
+
         for c in cls.__metaclass__.__variant_classes__:
             if not isinstance(obj, c):
                 continue
@@ -50,6 +69,10 @@ class ResourceModelBase(db.Model):
 
     @classmethod
     def get_type(cls, name):
+        """
+        Returns a subclass of the resource base class associated with a given resource type name.
+        """
+
         for c in cls.__metaclass__.__variant_classes__:
             if name.lower() == c.__name__.lower():
                 return c
@@ -58,34 +81,57 @@ class ResourceModelBase(db.Model):
 
     @classmethod
     def on_transient_to_pending(cls, session, obj):
+        """
+        An event hook which SQLAlchemy calls whenever a new object is being inserted into the database.
+        """
+
+        # Check if the inserted object is a subclass of the resource base class
         for c in cls.__metaclass__.__variant_classes__:
             if isinstance(obj, c.model):
                 break
         else:
             return
 
+        # If so, create a new `resource` row which links the object to be inserted to it's resource ID
         from crm.models import Resource
         resource = Resource.from_instance(c(from_instance=obj))
         session.add(resource)
 
 
 class ResourceMeta(type):
+    """
+    Metaclass for the resource base class.
+    """
+
     __variant_classes__ = []
 
     def __init__(cls, name, bases, d):
         super().__init__(name, bases, d)
 
     def __new__(cls, clsname, bases, d):
+        # This method is called every time this metaclass is used to construct a new class
+
         fields = dict()
 
+        # Instantiate the new class. The name `inst` refers to the value being an
+        # instance of this metaclass (opposed to `cls`), not an instance of the
+        # class we are constructing.
         inst = super(ResourceMeta, cls).__new__(cls, clsname, bases, d)
 
+        # Exit early if we are constructing the base class itself
         if d.get('__abstract__', False):
             return inst
+
+        # The next segment of code constructs a SQLAlchemy database model class dynamically
+        # based on the class attributes of the subclass we are currently constructing
+
+        # First, we define some columns which are referenced by the other columns
 
         created_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
         deleted_by_id = db.Column(db.Integer, db.ForeignKey('user.id'))
         variant_id = db.Column('id', db.Integer, primary_key=True)
+
+        # Thses columns are present on tables of every resource type
 
         model_dict = dict(
             variant_id = variant_id,
@@ -94,6 +140,12 @@ class ResourceMeta(type):
             created_by = db.relationship('User', foreign_keys=[created_by_id], uselist=False),
             deleted_by = db.relationship('User', foreign_keys=[deleted_by_id], uselist=False),
             _resource = db.relationship('Resource', foreign_keys='Resource.' + inst.__name__.lower() + '_id', uselist=False),
+
+            # This relationship represents the list of users who have been assigned to a particular resource.
+            # It involves four tables (<Resource Variant Table> -> Resource -> ResourceUserAssignment -> User)
+            # and as such is a bit cumbersome to write.  It is essentially just an ordinary many-to-many
+            # join, but instead of an normal materialized junction table, a join between the Resource
+            # and ResourceUserAssignment tables is used.
             assigned_users = db.relationship(
                 'User',
                 secondary='join(Resource, ResourceUserAssignment)',
@@ -103,6 +155,9 @@ class ResourceMeta(type):
             ),
         )
 
+        # Next, we iterate through the class attributes of `inst` and process
+        # all attributes which have a value subclassing the `Field` type.
+
         for name, value in vars(inst).items():
             if not isinstance(value, Field):
                 continue
@@ -111,19 +166,34 @@ class ResourceMeta(type):
             value._assign(name, inst)
             fields[name] = value
 
+        # The for loop below removes the processed class attributes from the class.
+        # If the were left present, our `__getattr__` and `__setattr__` implementations
+        # found not be called when accessing them.
+
         for field in fields.values():
             delattr(inst, field.name)
 
+        # Add this new subclass to the list of subclasses 
         cls.__variant_classes__.append(inst)
 
+        # Instantiate the SQLAlchemy Model sub-class using the class attributes from `model_dict`
         model = DefaultMeta(clsname, (db.Model,), model_dict)
 
+        # Assigne the list of processed `Field` types, and the Model class created above,
+        # to the new resource subclass.
         setattr(inst, 'model', model)
         setattr(inst, '_fields', fields)
 
         return inst
 
     def create_resource_table(cls):
+        """
+        Creates an SQLAlchemy model for a table, which contains an foreign key column for each of the
+        known resource types, as well as an ID column.
+
+        This table can be used to refer to an resource, without having to know it's type. 
+        """
+
         properties = dict(
             id = db.Column(db.Integer, primary_key=True),
             __metaclass__ = cls,
@@ -142,6 +212,12 @@ class ResourceMeta(type):
 
 
 class BoundField:
+    """
+    Represents an `Field` which is associated with a resource instance.
+    This class is essentially an proxy class for `Field` which injects
+    the associated resource into appropriate method calls.
+    """
+
     def __init__(self, resource, field):
         self.resource = resource
         self.field = field
@@ -165,13 +241,14 @@ class BoundField:
 
 
 class BoundFields:
+    """
+    Collection of `Field` object associated with a single resource instance.
+    """
+
     def __init__(self, resource):
         self.resource = resource
 
     def __iter__(self):
-        from crm.models import User
-        user = User.get(session['user_id'])
-
         for field in self.resource._fields.values():
             yield BoundField(self.resource, field)
 
@@ -186,15 +263,36 @@ class BoundFields:
 
 
 class Section:
+    """
+    An optionally labelled section containing a set of fields.
+    """
+
     def __init__(self, label, fields):
         self.label = label
         self.fields = fields
 
 
 class BaseResource(metaclass=ResourceMeta):
+    """ Base parent class for all kinds of resources.
+
+    :param from_instance: If provided, the created instance wraps this underlying database row.
+    :type: SQLAlchemy model instance
+    """
+
     __abstract__ = True
+
     __acl__ = None
+    """Access Control List for the resources of this type.
+
+    Defines what permissions particular user has to an
+    instance of this resource type.
+    """
+
     __layout__ = None
+    """List of Sections containing references to Fields of this Resource.
+        
+    Used when displaying this resource.  
+    """
 
     def __init__(self, from_instance=None, **kwargs):
         instance = from_instance
@@ -214,6 +312,12 @@ class BaseResource(metaclass=ResourceMeta):
 
     @property
     def layout(self):
+        """The prefered layout in which this resource's field should be displayed.
+
+        If no layout is explicitly specified using the `__layout__` class attribute,
+        a default layout is returned.
+        """
+
         if self.__layout__ is None:
             yield Section(None, self.fields)
         else:
@@ -221,41 +325,101 @@ class BaseResource(metaclass=ResourceMeta):
                 yield Section(section.label, [ BoundField(self, field) for field in section.fields ])
 
     def get_id(self):
+        """
+        Returns the ID of this resource.
+        """
+
         return self.instance._resource.id
 
     def set_created_by(self, user):
+        """
+        Sets the `created_by` metadata field to the specified user.
+        """
+
         self._set_field('created_by', user.instance)
 
     @property
     def created_by(self):
+        """
+        User who created this resource.
+
+        For now, this also serves as the "owner" of this resource.
+        """
+
         from crm.models import User
         return User(from_instance=self.instance.created_by)
 
     @property
     def assigned_users(self):
+        """
+        List of users to whom this resource has been assigned to.
+        """
+
         from crm.models import User
         return [ User(from_instance=i) for i in self.instance.assigned_users ]
 
     @classmethod
     def all(cls, *args, **kwargs):
+        """
+        Fetches all instances of this resource type from the database.
+
+        Wraps a method of the same name from SQLAlchemy.
+        """
+
         return [ cls(from_instance=i) for i in cls.model.query.all(*args, **kwargs) ]
 
     @classmethod
     def get(cls, *args, **kwargs):
+        """
+        Fetches a single instance of this resource type from the database,
+        based on its resource type dependent internal ID.
+
+        Most likely you will want to use `Resource.get_resource` instead,
+        unless you know that a resource can only be of one type in this
+        context.
+        """
+
         return cls(from_instance=cls.model.query.get(*args, **kwargs))
 
     @classmethod
     def filter_by(cls, *args, **kwargs):
+        """
+        Fetches a list of resources based on specified column values.
+
+        Note that values must be specified in the format they are in-database.
+        """
+
         return [ cls(from_instance=i) for i in cls.model.query.filter_by(*args, **kwargs).all() ]
 
     @classmethod
     def from_statement(cls, *args, **kwargs):
+        """
+        Executes an arbitrary SQL statement and wraps it's results into Resource objects of this type.
+        """
+
         return [ cls(from_instance=i) for i in cls.model.query.from_statement(*args, **kwargs).all() ]
 
     def title(self):
+        """
+        Returns the title of this resource.
+
+        A title should be something a human would want to use to identify
+        a resource of this type from a list of many.
+        """
+
         return self.__class__.__name__ + ' #' + self.id
 
     def check_access(self, user, access_type):
+        """
+        Returns True if the `user` has access permissions of the
+        specified type against this resource.
+
+        :param user: User which is trying to take action against this resource.
+        :param access_type: Type of the action the user is trying to perform.
+
+        :returns: True if the user should be allowed to perform the action, False otherwise.
+        """
+
         return self.__acl__.check(self, user, access_type)
 
     def __eq__(self, other):
@@ -286,6 +450,10 @@ class BaseResource(metaclass=ResourceMeta):
         self._fields[name].on_set(self, value)
 
     def assign_to(self, user):
+        """
+        Assigns this resource to the specified user.
+        """
+
         from crm.models import User
         if isinstance(user, User):
             user = user.instance
@@ -295,6 +463,10 @@ class BaseResource(metaclass=ResourceMeta):
         db.session.commit()
 
     def unassign_from(self, user):
+        """
+        Removes the assignment of this resource from the specified user.
+        """
+
         from crm.models import User
         if isinstance(user, User):
             user = user.instance
@@ -303,6 +475,10 @@ class BaseResource(metaclass=ResourceMeta):
         db.session.commit()
 
     def save(self):
+        """
+        Saves this resource to the database and performs the associated book-keeping.
+        """
+
         for name, value in self.dirty.items():
             setattr(self.instance, name, value)
 
