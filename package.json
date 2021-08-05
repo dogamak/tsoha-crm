@@ -1,0 +1,37 @@
+{
+  "name": "tsoha-crm",
+  "version": "1.0.0",
+  "description": "## Termejä",
+  "main": "assets/entry.js",
+  "scripts": {
+      "build": "webpack --mode production"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dogamak/tsoha-crm.git"
+  },
+  "author": "Mitja Karhusaari <mitja.karhusaari@helsinki.fi>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dogamak/tsoha-crm/issues"
+  },
+  "homepage": "https://github.com/dogamak/tsoha-crm#readme",
+  "devDependencies": {
+    "@vue/compiler-sfc": "^3.1.5",
+    "css-loader": "^6.2.0",
+    "mini-css-extract-plugin": "^2.2.0",
+    "node-sass": "^6.0.1",
+    "sass-loader": "^12.1.0",
+    "style-loader": "^3.2.1",
+    "vue-loader": "^16.4.1",
+    "vue-style-loader": "^4.1.3",
+    "webpack": "^5.48.0",
+    "webpack-cli": "^4.7.2"
+  },
+  "dependencies": {
+    "bootstrap": "^5.1.0",
+    "bootstrap-icons": "^1.5.0",
+    "vue": "^3.1.5",
+    "vue-click-outside": "^1.1.0"
+  }
+}

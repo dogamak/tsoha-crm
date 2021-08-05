@@ -1,3 +1,4 @@
+import json
 from flask import Blueprint, redirect, url_for, render_template, flash, request, session
 
 from crm.access import AccessType
@@ -13,7 +14,15 @@ def view(id):
     if not resource.check_access(get_session_user(), AccessType.Read):
         return render_template('not_found')
 
-    return render_template('view-resource.html', resource=resource, users=User.all())
+    return render_template(
+        'view-resource.html',
+        resource=resource,
+        users=json.dumps([
+            { "id": user.id, "title": user.title(), "type": "User" }
+            for user in User.all()
+            if user not in resource.assigned_users
+        ]),
+    )
 
 @blueprint.route('/edit/<id>/assign', methods=['POST'])
 def assign(id):

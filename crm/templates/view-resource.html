@@ -54,12 +54,8 @@
       </div>
       <div class="modal-body">
         <form method="POST" action="{{ url_for('resource.assign', id=resource.id) }}" id="assign-form">
-          <label class="text-secondary">Select user for assignment</label>
-          <select class="form-select" name="user">
-            {% for user in users %}
-            <option value="{{ user.id }}">{{ user.title() }}</option>
-            {% endfor %}
-          </select>
+          <label class="text-secondary mb-2">Select user for assignment</label>
+          <div id="user-select"></div>
         </form>
       </div>
       <div class="modal-footer">
@@ -69,4 +65,8 @@
     </div>
   </div>
 </div>
+
+<script type="text/javascript">
+  window.createResourceSelect('#user-select', 'user', {{ users | safe }});
+</script>
 {% endblock %}
