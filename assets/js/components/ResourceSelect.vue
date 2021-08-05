@@ -28,8 +28,6 @@
 </template>
 
 <script>
-    import { directive as clickOutside } from 'vue-click-outside';
-
     export default {
         props: {
             name: String,
