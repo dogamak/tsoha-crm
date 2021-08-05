@@ -4,6 +4,7 @@
   "description": "## Termejä",
   "main": "assets/entry.js",
   "scripts": {
+      "heroku-prebuild": "npm install --dev",
       "build": "webpack --mode production"
   },
   "repository": {
