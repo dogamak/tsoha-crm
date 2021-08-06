@@ -45,6 +45,11 @@
                         <input type="file" name="{{field.name}}" accept="image/*" />
                       </div>
                     </div>
+                  {% elif field.widget == 'reference' %}
+                    <div id="resource-select-{{field.name}}"></div>
+                    <script type="text/javascript">
+                      window.createResourceSelect('#resource-select-{{field.name}}', '{{field.name}}', {{ field.get_options() | safe }});
+                    </script>
                   {% endif %}
                 </div>
               {% endif %}

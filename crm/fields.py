@@ -1,3 +1,4 @@
+import json
 from enum import Enum
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -137,3 +138,34 @@ class FileField(Field):
         print('create_from', type(value), value)
         file = File.create_from(value.stream, name=value.filename)
         super().on_set(instance, file)
+
+
+class ReferenceField(Field):
+    def __init__(self, resource_type=None, *args, **kwargs):
+        if 'widget' not in kwargs:
+            kwargs['widget'] = 'reference'
+
+        self.resource_type = resource_type
+
+        super().__init__(db.Integer, db.ForeignKey('resource.id'), *args, **kwargs)
+
+    def from_storage(self, resource_id):
+        from crm.models import Resource
+        return Resource.get_resource(resource_id)
+
+    def to_storage(self, instance):
+        return instance.id
+
+    def on_set(self, instance, value):
+        from crm.models import Resource
+
+        if isinstance(value, str):
+            value = Resource.get_resource(int(value))
+
+        super().on_set(instance, value)
+
+    def get_options(self):
+        return json.dumps([
+            { "id": instance.id, "type": self.resource_type.__name__, "title": instance.title() }
+            for instance in self.resource_type.all()
+        ])

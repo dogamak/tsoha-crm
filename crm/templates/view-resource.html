@@ -38,6 +38,15 @@
           <div class="badge bg-secondary">{{ field.get().value }}</div>
           {% elif field.widget == 'image' %}
           <img src="{{ field.get().get_url() }}" class="col-4" />
+          {% elif field.widget == 'reference' %}
+          <div class="border rounded d-inline-flex align-items-center" style="padding: .25rem .75rem .25rem .75rem; cursor: pointer" onclick="window.location = '{{ url_for('resource.view', id=field.get().id) }}'">
+            <div class="d-flex flex-column justify-content-center">
+              <span>{{ field.get().title() }}</span>
+              <span style="font-size: 0.7rem; letter-spacing: 0.05em; color: #f00; margin-top: -0.3rem; font-weight: 600; padding-bottom: 0.2rem;">{{ field.get().__class__.__name__ }}</span>
+            </div>
+            <i class="bi-chevron-right ms-2"></i>
+          </div>
+            
           {% endif %}
         </div>
       {% endfor %}
