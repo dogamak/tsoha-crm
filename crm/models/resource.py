@@ -361,6 +361,9 @@ class BaseResource(metaclass=ResourceMeta):
         For now, this also serves as the "owner" of this resource.
         """
 
+        if self.instance.created_by is None:
+            return None
+
         from crm.models import User
         return User(from_instance=self.instance.created_by)
 
@@ -465,10 +468,6 @@ class BaseResource(metaclass=ResourceMeta):
     def __getattr__(self, name):
         if name == 'id':
             return self.get_id()
-
-        if name == 'created_by':
-            from crm.models import User
-            return User(from_instance=self.instance.created_by)
 
         if name in self.dirty:
             value = self.dirty[name]

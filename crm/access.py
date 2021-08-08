@@ -64,7 +64,7 @@ class AccessControlList:
 
         return (AccessControlGroup.Other in acl) or \
             (user == resource and AccessControlGroup.Self in acl) or \
-            (resource.created_by == user and AccessControlGroup.Owner in acl) or \
+            (resource.created_by and resource.created_by == user and AccessControlGroup.Owner in acl) or \
             (user in resource.assigned_users and AccessControlGroup.Assigned in acl) or \
             (user.role == UserRole.Administrator and AccessControlGroup.Admin in acl)
 

@@ -14,8 +14,10 @@
 {% block content %}
 <div class="container-sm d-flex">
   <div class="col-md-3 m-4 m-4 text-end">
-    <b>Created by</b><br />
-    <a href="{{ url_for('resource.view', id=resource.created_by.id) }}">{{ resource.created_by.title() }}</a>
+    {% if resource.created_by %}
+      <b>Created by</b><br />
+      <a href="{{ url_for('resource.view', id=resource.created_by.id) }}">{{ resource.created_by.title() }}</a>
+    {% endif %}
     <br/><br/>
     <b>Assigned to</b><br />
     <ul>
@@ -37,7 +39,9 @@
           {% elif field.widget == 'choice' %}
           <div class="badge bg-secondary">{{ field.get().value }}</div>
           {% elif field.widget == 'image' %}
-          <img src="{{ field.get().get_url() }}" class="col-4" />
+            {% if field.get() %}
+              <img src="{{ field.get().get_url() }}" class="col-4" />
+            {% endif %}
           {% elif field.widget == 'reference' %}
           <div class="border rounded d-inline-flex mt-2 align-items-center" style="padding: .25rem .75rem .25rem .75rem; cursor: pointer" onclick="window.location = '{{ url_for('resource.view', id=field.get().id) }}'">
             <div class="d-flex flex-column justify-content-center">
