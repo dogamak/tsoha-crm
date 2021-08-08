@@ -115,14 +115,14 @@ class PasswordField(Field):
     def from_storage(self, hash):
         return '*******'
 
-    def on_set(self, instance, password, confirmation=None):
+    def set_value(self, instance, password, confirmation=None):
         if password == '':
             return
 
         if confirmation is not None and password != confirmation:
             raise ValueError(f'Confirmation for field {self.label} does not match.')
 
-        return super().on_set(instance, password)
+        return super().set_value(instance, password)
 
     def compare(self, hash, password):
         return check_password_hash(hash, password)
@@ -179,14 +179,14 @@ class FileField(Field):
         db.session.add(value)
         return value.hash
 
-    def on_set(self, instance, value):
+    def set_value(self, instance, value):
         if value.filename == '':
             return
 
         from crm.models import File
         print('create_from', type(value), value)
         file = File.create_from(value.stream, name=value.filename)
-        super().on_set(instance, file)
+        super().set_value(instance, file)
 
 
 class ReferenceField(Field):
