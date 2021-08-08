@@ -23,6 +23,17 @@
                   <input type="password" name="{{field.name}}.confirmation" class="form-control" />
                 </div>
               </div>
+              {% elif field.widget == 'table' %}
+                <div class="text-secondary mb-1">{{ field.label }}</div>
+                <div id="field-{{field.name}}-table"></div>
+                <script type="text/javascript">
+                  window.createResourceTable({
+                    mount: '#field-{{field.name}}-table', 
+                    fieldName: '{{field.name}}',
+                    resourceType: '{{field.foreign_type.__name__}}',
+                    rows: {{ field.get_value_json(field) | safe }},
+                  });
+                </script>
               {% else %}
                 <div class="col-md-{{ '12' if field.widget in ['image'] else '6' }}">
                   <div class="text-secondary">{{ field.label }}</div>

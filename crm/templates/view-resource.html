@@ -20,7 +20,7 @@
     <b>Assigned to</b><br />
     <ul>
       {% for user in resource.assigned_users %}
-      <li><a href="{{ url_for('resource.view', id=user.id) }}">{{ user.title() }}</a> <a href="{{ url_for('resource.unassign', resource_id=resource.id, user_id=user.id) }}">[Unassign]</a></li>
+      <li><a href="{{ url_for('resource.view', id=user.id) }}">{{ user.title() }}</a> <a href="{{ url_for('resource.unassign', resource_id=resource.id, user_id=user.id) }}"><i class="bi-x-circle"></i></a></li>
       {% endfor %}
     </ul>
     <a href="" data-bs-toggle="modal" data-bs-target="#assign-modal">Add user</a>
@@ -39,14 +39,26 @@
           {% elif field.widget == 'image' %}
           <img src="{{ field.get().get_url() }}" class="col-4" />
           {% elif field.widget == 'reference' %}
-          <div class="border rounded d-inline-flex align-items-center" style="padding: .25rem .75rem .25rem .75rem; cursor: pointer" onclick="window.location = '{{ url_for('resource.view', id=field.get().id) }}'">
+          <div class="border rounded d-inline-flex mt-2 align-items-center" style="padding: .25rem .75rem .25rem .75rem; cursor: pointer" onclick="window.location = '{{ url_for('resource.view', id=field.get().id) }}'">
             <div class="d-flex flex-column justify-content-center">
               <span>{{ field.get().title() }}</span>
               <span style="font-size: 0.7rem; letter-spacing: 0.05em; color: #f00; margin-top: -0.3rem; font-weight: 600; padding-bottom: 0.2rem;">{{ field.get().__class__.__name__ }}</span>
             </div>
             <i class="bi-chevron-right ms-2"></i>
           </div>
-            
+          {% elif field.widget == 'table' %}
+          <div class="card mt-2">
+            <div>
+              <table class="table mb-0 user-management-table">
+                {% for row in field.get() %}
+                <tr>
+                  <td style="width: 2.54rem" class="text-center border-end"><input type="checkbox" /></td>
+                  <td><a href="{{ url_for('resource.view', id=row.id) }}">{{row.title()}}</a></td>
+                </tr>
+                {% endfor %}
+              </table>
+            </div>
+          </div>
           {% endif %}
         </div>
       {% endfor %}

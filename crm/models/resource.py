@@ -162,7 +162,11 @@ class ResourceMeta(type):
             if not isinstance(value, Field):
                 continue
 
-            model_dict[name] = value.column
+            column = value.create_column()
+
+            if column is not None:
+                model_dict[name] = column
+
             value._assign(name, inst)
             fields[name] = value
 
@@ -183,8 +187,16 @@ class ResourceMeta(type):
         # to the new resource subclass.
         setattr(inst, 'model', model)
         setattr(inst, '_fields', fields)
+        setattr(inst, '__metaclass__', cls)
+        setattr(inst, '__abstract__', False)
 
         return inst
+
+    def __getattr__(self, name):
+        if self.__abstract__:
+            raise AttributeError(name)
+
+        return self._fields[name]
 
     def create_resource_table(cls):
         """
@@ -223,10 +235,10 @@ class BoundField:
         self.field = field
 
     def set(self, value, **kwargs):
-        self.field.on_set(self.resource, value, **kwargs)
+        self.field.set_value(self.resource, value, **kwargs)
 
     def get(self):
-        return getattr(self.resource, self.field.name)
+        return self.resource._get_field(self)
 
     def compare(self, value):
         return self.field.compare(getattr(self.resource.instance, self.field.name), value)
@@ -329,14 +341,17 @@ class BaseResource(metaclass=ResourceMeta):
         Returns the ID of this resource.
         """
 
-        return self.instance._resource.id
+        if self.instance._resource is not None:
+            return self.instance._resource.id
+        
+        return None
 
     def set_created_by(self, user):
         """
         Sets the `created_by` metadata field to the specified user.
         """
 
-        self._set_field('created_by', user.instance)
+        self._set_column_raw('created_by', user.instance)
 
     @property
     def created_by(self):
@@ -399,6 +414,28 @@ class BaseResource(metaclass=ResourceMeta):
 
         return [ cls(from_instance=i) for i in cls.model.query.from_statement(*args, **kwargs).all() ]
 
+    @classmethod
+    def resolve_resource(cls, reference):
+        parts = reference.split('.')
+
+        if len(parts) not in (1, 2):
+            raise ValueError('Invalid reference')
+
+        resource_type = parts[0]
+
+        for vcls in cls.__metaclass__.__variant_classes__:
+            if vcls.__name__ == resource_type:
+                break
+        else:
+            raise ValueError('Unknown resource type: ' + resource_type)
+
+        if len(parts) == 1:
+            return vcls
+
+        column_name = parts[1]
+        return getattr(vcls, column_name)
+
+
     def title(self):
         """
         Returns the title of this resource.
@@ -407,7 +444,7 @@ class BaseResource(metaclass=ResourceMeta):
         a resource of this type from a list of many.
         """
 
-        return self.__class__.__name__ + ' #' + self.id
+        return self.__class__.__name__ + ' #' + str(self.id)
 
     def check_access(self, user, access_type):
         """
@@ -443,11 +480,31 @@ class BaseResource(metaclass=ResourceMeta):
         except KeyError:
             return getattr(self.instance, name)
 
-    def _set_field(self, name, value):
-        self.dirty[name] = value
+    def _set_field(self, field, value):
+        if field.name not in self.dirty:
+            self.dirty[field.name] = field.cache(self, field)
+
+        self.dirty[field.name].set_value(value)
+
+    def _set_column_raw(self, column, value):
+        setattr(self.instance, column, value)
+
+    def _get_field(self, field):
+        if field.name not in self.dirty:
+            self.dirty[field.name] = field.cache(self, field)
+
+        cache = self.dirty[field.name]
+
+        return field.get_value(self, cache)
 
     def __setattr__(self, name, value):
-        self._fields[name].on_set(self, value)
+        field = self._fields[name]
+
+        if name not in self.dirty:
+            self.dirty[name] = field.cache(self, field)
+
+        cache = self.dirty[name]
+        field.set_value(self, value)
 
     def assign_to(self, user):
         """
@@ -479,8 +536,8 @@ class BaseResource(metaclass=ResourceMeta):
         Saves this resource to the database and performs the associated book-keeping.
         """
 
-        for name, value in self.dirty.items():
-            setattr(self.instance, name, value)
+        for name, cache in self.dirty.items():
+            self._fields[name].persist(self, cache)
 
         db.session.add(self.instance)
         db.session.commit()
