@@ -1,5 +1,6 @@
 from flask import Flask, render_template, session, redirect, request, url_for, flash
-import toml
+import random
+import string
 
 from sqlalchemy import select
 
@@ -7,19 +8,23 @@ from crm.auth import has_role, require_auth
 from crm.views.auth import blueprint as auth_blueprint
 from crm.views.settings import blueprint as settings_blueprint
 from crm.views.resource import blueprint as resource_blueprint
-from crm.db import db
+import crm.db
 
 from crm.config import get_config
 from crm.models import Account, Resource, User
+from crm.models.user import UserRole
 from crm.models.resource import ResourceUserAssignment
 from crm.access import AccessType
+
+def generate_random_string(length):
+    return ''.join(random.choice(string.ascii_letters) for _ in range(0, length))
 
 def create_app():
     app = Flask(__name__)
 
     app.config.from_object(get_config(app))
 
-    db.init_app(app)
+    crm.db.init_app(app)
 
     @app.route('/ping')
     def healthcheck():
@@ -39,6 +44,27 @@ def create_app():
         )
 
         return render_template('dashboard.html', accounts=accounts)
+
+    @app.route('/create_test_account')
+    def create_test_account():
+        if app.config['ENV'] not in ('testing', 'development'):
+            return redirect(url_for('dashboard'))
+
+        while True:
+            username = f'testing-{generate_random_string(8)}'
+            user = User.filter_by(username=username)
+
+            print(username, user)
+
+            if len(user) == 0:
+                break
+
+        password = generate_random_string(24)
+        user = User(username=username, password=password, role=UserRole.Administrator)
+        user.save()
+        session['user_id'] = user.instance.variant_id
+        flash(f'Admin account "{user.username}" with password "{password}" created for testing purposes. You can change the username and password on the settings page.')
+        return redirect(url_for('dashboard'))
 
     @app.route('/file/<hash>/<name>')
     def serve_file(hash, name):
