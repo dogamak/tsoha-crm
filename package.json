@@ -32,7 +32,10 @@
   "dependencies": {
     "@popperjs/core": "^2.9.3",
     "bootstrap": "^5.1.0",
+    "bootstrap-datepicker": "^1.9.0",
     "bootstrap-icons": "^1.5.0",
-    "vue": "^3.1.5"
+    "jquery": "^3.6.0",
+    "vue": "^3.1.5",
+    "vue2-datepicker": "^4.0.0-beta.2"
   }
 }

@@ -1,4 +1,5 @@
 import json
+import babel.numbers
 from enum import Enum
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -29,11 +30,11 @@ class Field:
         self.column_args = args
         self.column_kwargs = kwargs
 
-    def create_column(self):
+    def create_columns(self):
         if self.column_type is None:
-            return None
+            return []
 
-        return db.Column(self.column_type, *self.column_args, **self.column_kwargs)
+        return [ db.Column(self.column_type, *self.column_args, **self.column_kwargs) ]
 
     @property
     def column(self):
@@ -85,7 +86,7 @@ class Field:
         self.resource = resource
 
         if self.label is None:
-            self.label = name[0].upper() + name[1:] 
+            self.label = ' '.join(part[0].upper() + part[1:] for part in name.split('_'))
 
 
 class TextField(Field):
@@ -100,6 +101,56 @@ class TextField(Field):
             return ''
 
         return value
+
+
+class DateField(Field):
+    def __init__(self, *args, widget=None, **kwargs):
+        if widget is None:
+            widget = 'date'
+
+        super().__init__(db.DateTime, *args, widget=widget, **kwargs)
+
+    def set_value(self, instance, value):
+        if value == '':
+            value = None
+
+        super().set_value(instance, value)
+
+
+class CurrencyValue:
+    def __init__(self, amount, currency):
+        self.amount = amount or 0
+        self.currency = currency or 'USD'
+
+    def __str__(self):
+        return babel.numbers.format_currency(self.amount, self.currency)
+
+
+class CurrencyField(Field):
+    def __init__(self, *args, widget=None, **kwargs):
+        if widget is None:
+            widget = 'currency'
+
+        super().__init__(None, *args, widget=widget, **kwargs)
+
+    def create_columns(self):
+        return [
+            db.Column(self.name + '_amount', db.Integer),
+            db.Column(self.name + '_currency', db.String),
+        ]
+
+    def retrieve(self, resource):
+        return CurrencyValue(getattr(resource.instance, self.name), getattr(resource.instance, self.name + '_1'))
+
+    def persist(self, resource, cache):
+        setattr(resource.instance, self.name, cache.get_value().amount)
+        setattr(resource.instance, self.name + '_1', cache.get_value().currency)
+
+    def set_value(self, resource, amount, currency=None):
+        resource._set_field(self, CurrencyValue(int(amount), currency))
+
+    def list_currencies(self):
+        return babel.numbers.list_currencies()
 
 
 class PasswordField(Field):

@@ -63,6 +63,10 @@
               </table>
             </div>
           </div>
+          {% elif field.widget == 'currency' %}
+          <div class="font-monospace">{{ field.get() }}</div>
+          {% elif field.widget == 'date' %}
+          {{ field.get() or '' }}
           {% endif %}
         </div>
       {% endfor %}

@@ -42,7 +42,7 @@ class ResourceModelBase(db.Model):
             return None
 
         for c in cls.__metaclass__.__variant_classes__:
-            column_name = c.model.__tablename__ + '_id'
+            column_name = c.model.__name__.lower() + '_id'
             id = getattr(resource, column_name)
 
             if id is not None:
@@ -162,13 +162,16 @@ class ResourceMeta(type):
             if not isinstance(value, Field):
                 continue
 
-            column = value.create_column()
-
-            if column is not None:
-                model_dict[name] = column
-
             value._assign(name, inst)
             fields[name] = value
+
+            for i, column in enumerate(value.create_columns()):
+                if i == 0:
+                    column_name = name
+                else:
+                    column_name = name + '_' + str(i)
+
+                model_dict[column_name] = column
 
         # The for loop below removes the processed class attributes from the class.
         # If the were left present, our `__getattr__` and `__setattr__` implementations
@@ -212,7 +215,7 @@ class ResourceMeta(type):
         )
 
         for cls in cls.__variant_classes__:
-            column_name = cls.model.__tablename__ + '_id'
+            column_name = cls.model.__name__.lower() + '_id'
             properties[column_name] = db.Column(db.Integer, db.ForeignKey(getattr(cls.model, 'variant_id')))
             properties[cls.model.__tablename__] = db.relationship(cls.model, back_populates='_resource', foreign_keys='Resource.'+column_name)
 
