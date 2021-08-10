@@ -68,3 +68,9 @@ As mentioned in the previous section, field types can define multiple actions in
 For now, at least, these editing sessions are maintained only in-memory. This is sufficient because the sessions are ephemeral and we are running only a single instance of the web server, and so we can just hold onto the Resource objects across requests.
 
 When the user navigates to `/edit/<resource_id>` a new editing session is created, alongside an associated randomly generated key, which is used to identify the session. The user is immediately redirected to `/edit/<resource_id>/<editing_session_id>` and a editing form is rendered. Any subsequent POST requests redirect to this same address, and by using the editing session ID, we can maintain state across the whole editing process.
+
+## Some miscellaneous, messy, and hard to understand sequence diagrams
+
+![](./set_value.svg)
+![](./get_value.svg)
+![](./editing.svg)
