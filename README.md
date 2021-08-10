@@ -1,5 +1,7 @@
 # Asiakkuudenhallinta
 
+[Arkkitehtuuridokumentaatio](./docs/architecture.md)
+
 Asiakkuudenhallintajärjestelmä on yrityskäyttöön tarkoitettu järjestelmä, joka tarjoaa etenkin myynnille työkaluja mahdollisten tulevien ja nykyisten asiakkaiden tietojen hallintaan. Tyypillinen käyttötapaus on seuraavan lainen:
 
  1. Myynnin tietoon tulee, että jokin taho voisi olla mahdollinen tuleva asiakas. Myynti kirjaa järjestelmään asiakkaan alustavat tiedot.
@@ -12,7 +14,7 @@ Asiakkuudenhallintajärjestelmä on yrityskäyttöön tarkoitettu järjestelmä,
 
 Järjestelmä on tarkoitettu ajettavaksi siten, että siitä on yksi instanssi per sitä käyttävä organisaatio. Tästä johtuen yksittäisten asiakkaiden oikeudet ovat paikoin laajempia, kuin täysin julkisessa järjestelmässä olisi suotavaa. Tästä syystä myös käyttäjienhallinta on keskitetty järjestelmän ylläpitäjille. Tulevaisuudessa, tarpeeksi joustavien ryhmätoiminnallisuuksien toteuduttua, voi järjestelmää mahdollisesti käyttää myös useampi organisaatio ilman erillisiä instansseja.
 
-Järjestelmän testiympäristo on käytettävissä osoitteessa https://tsoha-crm.herokuapp.com/. Voit luoda uuden käyttäjän testauskäyttöön navigoimalla osoitteeseen https://tsoha-crm.herokuapp.com/create_test_account. Luotu käyttäjä on ylläpitäjä ja näin sillä on käytännössä oikeudet kaikkeen järjestelmässä, ainakin toistaiseksi. Tämä käyttäjänluomismekanismi on käytettävissä vain testaus ja tuotantoympäristöissä.
+Järjestelmän testiympäristo on käytettävissä osoitteessa https://tsoha-crm.herokuapp.com/. Voit luoda uuden käyttäjän testauskäyttöön navigoimalla osoitteeseen https://tsoha-crm.herokuapp.com/create_test_account. Luotu käyttäjä on ylläpitäjä ja näin sillä on käytännössä oikeudet kaikkeen järjestelmässä, ainakin toistaiseksi. Tämä käyttäjänluomismekanismi on käytettävissä vain testaus ja kehitysympäristöissä.
 
 ## Ominaisuudet
 
