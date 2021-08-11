@@ -1,6 +1,7 @@
 import json
 from flask import Blueprint, redirect, url_for, render_template, flash, request, session
 
+from crm.fields import ActionContext
 from crm.access import AccessType
 from crm.models import Resource, User
 from crm.auth import get_session_user
@@ -73,21 +74,27 @@ def edit_post(id):
         else:
             continue
 
-        extra_arguments = {
-            param_name.split('.', 1)[1]: param_value
-            for param_name, param_value in request.form.items()
-            if param_name.startswith(field.name + '.')
-        }
-
-        try:
-            field.set(new_value, **extra_arguments)
-        except ValueError as e:
-            flash(str(e), 'error')
-            return redirect(url_for('resource.view', id=resource.id))
+        ctx = ActionContext(field)
+        field.set_value_action(ctx)
     
-    resource.save()
+    action = request.form.get('__action', None)
 
+    if action is not None:
+        print(request.form)
+        field_name, action_name = action.split('.', 1)
+        field = resource.fields[field_name]
+        attr = getattr(field, action_name)
+
+        if not hasattr(attr, '__is_action'):
+            flash('Invalid request.')
+            return redirect(url_for('resource.edit', id=resource.id))
+
+        ctx = ActionContext(field)
+        attr(ctx)
+
+    resource.save()
     flash('Resource updated successfully!')
+
     return redirect(url_for('resource.view', id=resource.id))
 
 @blueprint.route('/create/<type>')

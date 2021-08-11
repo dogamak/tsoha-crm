@@ -12,8 +12,8 @@
                     <td style="width: 2.54rem" class="text-center border-end">
                         <input
                             type="checkbox"
-                            name="{{ fieldName }}.selected"
-                            value="{{ row.id }}"
+                            :name="`${fieldName}.selected`"
+                            :value="row.id"
                             @change="onRowSelectChange($event, row)"
                         />
                     </td>
@@ -29,7 +29,7 @@
                     </template>
                 </div>
                 <div class="d-flex">
-                    <!-- <button class="btn btn-sm btn-danger me-2" type="submit" name="action" :value="`${fieldName}.remove`">Poista valitut</button> -->
+                    <button class="btn btn-sm btn-danger me-2" type="submit" name="__action" :value="`${fieldName}.remove_selected`">Poista valitut</button>
                     <a class="btn btn-sm btn-primary" :href="`/create/${resourceType}`">Luo uusi {{resourceType}}</a>
                 </div>
             </div>

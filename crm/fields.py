@@ -2,33 +2,120 @@ import json
 import babel.numbers
 from enum import Enum
 from werkzeug.security import check_password_hash, generate_password_hash
+from flask import request
+
+from sqlalchemy.sql import select, not_
 
 from crm.db import db
 from crm.access import AccessControlList
+from crm.mutation import Mutation, mutation
 
 
-class FieldValueCache:
-    def __init__(self, resource, field):
-        self.value = None
+class ActionContext:
+    def __init__(self, bound):
+        self.bound = bound
+        self.arguments = ActionArguments(self)
 
-    def set_value(self, value):
+    def dispatch(self, mutation):
+        self.bound.resource.stage_mutation(mutation)
+
+    @property
+    def value(self):
+        name = self.bound.name
+
+        if name in request.form:
+            return request.form[name]
+        elif name in request.files:
+            return request.files[name]
+        
+        return None
+
+
+class ActionArguments:
+    def __init__(self, ctx):
+        self.ctx = ctx
+
+    def __getitem__(self, name):
+        name = self.ctx.bound.name + '.' + name
+
+        if name in request.form:
+            return request.form[name]
+        elif name in request.files:
+            return request.files[name]
+        
+        return None
+
+    def __getattr__(self, name):
+        return self[name]
+
+
+def action(func):
+    func.__is_action = True
+    return func
+
+
+class FieldState:
+    def __init__(self):
+        self.mutations = []
+
+    def stage_mutation(self, mutation):
+        self.mutations.append(mutation)
+
+    def get_mutations(self, bound):
+        value = bound.get_persisted_value()
+
+        i = 0
+
+        while len(self.mutations) > i:
+            mutation = self.mutations[i]
+
+            print(mutation, mutation.args[0], value)
+
+            if mutation.type == Field.set_value and mutation.args[0] == value:
+                self.mutations.pop(i)
+                continue
+
+            i += 1
+
+        return self.mutations
+
+    def clear(self):
+        self.mutations = []
+
+    def is_dirty(self):
+        return len(self.mutations) > 0
+
+    def get_value(self, bound):
+        for mutation in self.mutations[::-1]:
+            if mutation.type == Field.set_value:
+                return mutation.value
+
+        return bound.get_persisted_value()
+
+
+class SetMutation(Mutation):
+    def __init__(self, field, value):
+        super().__init__(field)
         self.value = value
 
-    def get_value(self):
-        return self.value
+    def commit(self, resource):
+        setattr(resource.instance, self.field.name, self.value)
+
+    def describe(self):
+        return f'Change field "{self.field.label}" to "{self.value}"'
 
 
 class Field:
-    def __init__(self, column_type, *args, label=None, widget=None, cache=FieldValueCache, acl=None, **kwargs):
+    def __init__(self, column_type, *args, label=None, widget=None, acl=None, **kwargs):
         self.name = None
         self.resource = None
-        self.cache = cache
         self.label = label
         self.widget = widget
         self.column_type = column_type
         self.acl = acl or AccessControlList()
         self.column_args = args
         self.column_kwargs = kwargs
+        self.state = FieldState
 
     def create_columns(self):
         if self.column_type is None:
@@ -46,10 +133,6 @@ class Field:
     def retrieve(self, resource):
         return getattr(resource.instance, self.name)
 
-    def persist(self, resource, cache):
-        value = self.to_storage(cache.get_value())
-        setattr(resource.instance, self.name, value)
-
     def to_storage(self, value):
         return value
 
@@ -59,27 +142,23 @@ class Field:
     def compare(self, stored, value):
         return stored == value
 
-    def set_value(self, resource, value):
-        resource._set_field(self, value)
+    @mutation
+    def set_value(self, ctx, value):
+        setattr(ctx.resource.instance, self.name, value)
 
-    def merge_cache(self, cache, value):
-        cached_value = cache.get_value()
+    @action
+    def set_value_action(self, ctx):
+        ctx.dispatch(self.set_value(ctx.value))
 
-        if cached_value is not None:
-            return cached_value
-
-        return value
+    @set_value.describe
+    def describe_set_value(self, value):
+        return f'Change field "{self.label}" to "{value}".'
 
     def get_persisted_value(self, resource):
         return self.from_storage(self.retrieve(resource))
 
-    def get_value(self, resource, cache):
-        cached = cache.get_value()
-
-        if cached is not None:
-            return cached
-
-        return self.get_persisted_value(resource)
+    def get_value(self, bound):
+        return bound.state.get_value(bound)
 
     def _assign(self, name, resource):
         self.name = name
@@ -87,6 +166,7 @@ class Field:
 
         if self.label is None:
             self.label = ' '.join(part[0].upper() + part[1:] for part in name.split('_'))
+
 
 
 class TextField(Field):
@@ -110,11 +190,14 @@ class DateField(Field):
 
         super().__init__(db.DateTime, *args, widget=widget, **kwargs)
 
-    def set_value(self, instance, value):
+    @action
+    def set_value_action(self, ctx):
+        value = ctx.value
+
         if value == '':
             value = None
 
-        super().set_value(instance, value)
+        ctx.dispatch(self.set_value(value))
 
 
 class CurrencyValue:
@@ -142,12 +225,17 @@ class CurrencyField(Field):
     def retrieve(self, resource):
         return CurrencyValue(getattr(resource.instance, self.name), getattr(resource.instance, self.name + '_1'))
 
-    def persist(self, resource, cache):
-        setattr(resource.instance, self.name, cache.get_value().amount)
-        setattr(resource.instance, self.name + '_1', cache.get_value().currency)
+    @mutation
+    def set_value(self, ctx, value):
+        setattr(ctx.resource.instance, self.name, value.amount)
+        setattr(ctx.resource.instance, self.name + '_1', value.currency)
 
-    def set_value(self, resource, amount, currency=None):
-        resource._set_field(self, CurrencyValue(int(amount), currency))
+    @action
+    def set_value_action(self, ctx):
+        amount = float(ctx.value)
+        currency = ctx.arguments['currency']
+        mutation = self.set_value(CurrencyValue(amount, currency))
+        ctx.dispatch(mutation)
 
     def list_currencies(self):
         return babel.numbers.list_currencies()
@@ -166,14 +254,18 @@ class PasswordField(Field):
     def from_storage(self, hash):
         return '*******'
 
-    def set_value(self, instance, password, confirmation=None):
+    @action
+    def set_value_action(self, ctx):
+        password = ctx.value
+        confirmation = ctx.arguments['confirmation']
+
         if password == '':
             return
 
         if confirmation is not None and password != confirmation:
             raise ValueError(f'Confirmation for field {self.label} does not match.')
 
-        return super().set_value(instance, password)
+        ctx.dispatch(self.set_value(password))
 
     def compare(self, hash, password):
         return check_password_hash(hash, password)
@@ -203,7 +295,6 @@ class ChoiceField(Field):
 
         raise ValueError(f'Unknown variant "{value}"')
 
-
     def from_storage(self, value):
         if value is None:
             return None
@@ -230,14 +321,21 @@ class FileField(Field):
         db.session.add(value)
         return value.hash
 
-    def set_value(self, instance, value):
-        if value.filename == '':
+    @mutation
+    def set_value(self, ctx, file):
+        from crm.models import File
+
+        file = File.create_from(file.stream, name=file.filename)
+        db.session.add(file)
+
+        setattr(ctx.resource.instance, self.name, file.hash)
+
+    @action
+    def set_value_action(self, ctx):
+        if ctx.value.filename == '':
             return
 
-        from crm.models import File
-        print('create_from', type(value), value)
-        file = File.create_from(value.stream, name=value.filename)
-        super().set_value(instance, file)
+        ctx.dispatch(self.set_value(ctx.value))
 
 
 class ReferenceField(Field):
@@ -256,19 +354,74 @@ class ReferenceField(Field):
     def to_storage(self, instance):
         return instance.id
 
-    def set_value(self, instance, value):
+    @action
+    def set_value_action(self, ctx):
         from crm.models import Resource
 
-        if isinstance(value, str):
-            value = Resource.get_resource(int(value))
+        if isinstance(ctx.value, str):
+            value = Resource.get_resource(int(ctx.value))
 
-        super().set_value(instance, value)
+        ctx.dispatch(self.set_value(value.id))
 
     def get_options(self):
         return json.dumps([
             { "id": instance.id, "type": self.resource_type.__name__, "title": instance.title() }
             for instance in self.resource_type.all()
         ])
+
+
+class TableFieldState(FieldState):
+    def __init__(self):
+        super().__init__()
+
+        self.added = []
+        self.removed = []
+
+    def stage_mutation(self, mutation):
+        if mutation.type == TableField.add_row:
+            id = mutation.args[0]
+
+            if id in self.removed:
+                self.removed.remove(id)
+            elif id not in self.added:
+                self.added.append(id)
+            else:
+                return
+
+        elif mutation.type == TableField.remove_row:
+            id = mutation.args[0]
+
+            if id in self.added:
+                self.added.remove(id)
+            elif id not in self.removed:
+                self.removed.add(id)
+            else:
+                return
+
+        super().stage_mutation(mutation)
+
+    def get_mutations(self):
+        return self.mutations
+
+    def get_value(self, bound):
+        variant_column_name = bound.remote_type.__name__.lower() + '_id'
+        resource_model = bound.remote_type.__resource_model__
+        variant_column = getattr(resource_model, variant_column_name)
+
+        added_variant_ids = select(variant_column).where(resource_model.id.in_(self.added))
+        removed_variant_ids = select(variant_column).where(resource_model.id.in_(self.removed))
+
+        added_resources = select(bound.remote_type.model) \
+            .where(bound.remote_type.model.variant_id.in_(added_variant_ids))
+
+        select(bound.remote_type.model).where(bound.remote_field.column.in_(self.added))
+
+        query = bound.get_query() \
+            .where(not_(bound.remote_type.model.variant_id.in_(removed_variant_ids))) \
+            .union(added_resources)
+
+        return db.session.execute(query)
+
 
 
 class TableFieldCache:
@@ -318,6 +471,29 @@ class TableField(Field):
     @property
     def foreign_type(self):
         return self.foreign_field.resource
+
+    @action
+    def remove_selected(self, ctx):
+        selected = ctx.arguments['selected'].split(',')
+
+        if len(selected) == 0:
+            return
+
+        for id in selected:
+            ctx.dispatch(self.remove_row(id))
+
+    @mutation
+    def remove_row(self, ctx, id):
+        from crm.models import Resource
+        resource = Resource.get_resource(id)
+        resource.fields[self.foreign_field.name].set(None)
+        resource.save()
+
+    @remove_row.describe
+    def describe_remove_row(self, id):
+        from crm.models import Resource
+        resource = Resource.get_resource(id)
+        return f'Remove "{resource.title()}" from "{self.label}".'
 
     def persist(self, resource, cache):
         pass

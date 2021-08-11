@@ -1,6 +1,7 @@
 from crm.db import db
 from crm.access import AccessControlList
 from crm.fields import Field
+from crm.mutation import CommitContext
 
 from sqlalchemy import event
 from flask_sqlalchemy.model import DefaultMeta
@@ -214,14 +215,17 @@ class ResourceMeta(type):
             __metaclass__ = cls,
         )
 
-        for cls in cls.__variant_classes__:
-            column_name = cls.model.__name__.lower() + '_id'
-            properties[column_name] = db.Column(db.Integer, db.ForeignKey(getattr(cls.model, 'variant_id')))
-            properties[cls.model.__tablename__] = db.relationship(cls.model, back_populates='_resource', foreign_keys='Resource.'+column_name)
+        for vcls in cls.__variant_classes__:
+            column_name = vcls.model.__name__.lower() + '_id'
+            properties[column_name] = db.Column(db.Integer, db.ForeignKey(getattr(vcls.model, 'variant_id')))
+            properties[vcls.model.__tablename__] = db.relationship(vcls.model, back_populates='_resource', foreign_keys='Resource.'+column_name)
 
         resource_cls = DefaultMeta('Resource', (ResourceModelBase,), properties)
 
         event.listen(db.session, 'transient_to_pending', resource_cls.on_transient_to_pending)
+
+        for vcls in cls.__variant_classes__:
+            setattr(vcls, '__resource_model__', resource_cls)
 
         return resource_cls
 
@@ -238,13 +242,21 @@ class BoundField:
         self.field = field
 
     def set(self, value, **kwargs):
-        self.field.set_value(self.resource, value, **kwargs)
+        mutation = self.field.set_value(value, **kwargs)
+        self.resource.stage_mutation(mutation)
 
     def get(self):
-        return self.resource._get_field(self)
+        return self.field.get_value(self)
 
     def compare(self, value):
         return self.field.compare(getattr(self.resource.instance, self.field.name), value)
+
+    def get_persisted_value(self):
+        return self.field.get_persisted_value(self.resource)
+
+    @property
+    def state(self):
+        return self.resource.staged[self.field.name]
 
     def check_access(self, access_type):
         from crm.models import User
@@ -316,8 +328,14 @@ class BaseResource(metaclass=ResourceMeta):
             instance = self.model()
 
         object.__setattr__(self, 'instance', instance)
-        object.__setattr__(self, 'dirty', dict())
         object.__setattr__(self, 'fields', BoundFields(self))
+
+        staged = {
+            field.name: field.state()
+            for field in self._fields.values()
+        }
+
+        object.__setattr__(self, 'staged', staged)
 
         if self.__acl__ is None:
             object.__setattr__(self, '__acl__', AccessControlList('r=sAaOg,w=sAaO,d=Oa,c=o'))
@@ -466,38 +484,16 @@ class BaseResource(metaclass=ResourceMeta):
         return self.__acl__.check(self, user, access_type)
 
     def __eq__(self, other):
-        return self.instance.variant_id == other.instance.variant_id
+        return type(self) == type(other) and self.instance.variant_id == other.instance.variant_id
 
     def __getattr__(self, name):
         if name == 'id':
             return self.get_id()
 
-        if name in self.dirty:
-            value = self.dirty[name]
-        else:
-            value = getattr(self.instance, name)
-
-        try:
-            return self._fields[name].from_storage(value)
-        except KeyError:
-            return getattr(self.instance, name)
-
-    def _set_field(self, field, value):
-        if field.name not in self.dirty:
-            self.dirty[field.name] = field.cache(self, field)
-
-        self.dirty[field.name].set_value(value)
+        return self.fields[name].get()
 
     def _set_column_raw(self, column, value):
         setattr(self.instance, column, value)
-
-    def _get_field(self, field):
-        if field.name not in self.dirty:
-            self.dirty[field.name] = field.cache(self, field)
-
-        cache = self.dirty[field.name]
-
-        return field.get_value(self, cache)
 
     def __setattr__(self, name, value):
         field = self._fields[name]
@@ -506,7 +502,10 @@ class BaseResource(metaclass=ResourceMeta):
             self.dirty[name] = field.cache(self, field)
 
         cache = self.dirty[name]
-        field.set_value(self, value)
+        self.stage_mutation(field.set_value(value))
+
+    def stage_mutation(self, mutation):
+        self.staged[mutation.field.name].stage_mutation(mutation)
 
     def assign_to(self, user):
         """
@@ -533,16 +532,28 @@ class BaseResource(metaclass=ResourceMeta):
         ResourceUserAssignment.query.filter_by(user_id=user.variant_id, resource_id=self.id).delete()
         db.session.commit()
 
+    def staged_mutations(self):
+        for name, state in self.staged.items():
+            yield from state.get_mutations(self.fields[name])
+
     def save(self):
         """
         Saves this resource to the database and performs the associated book-keeping.
         """
 
-        for name, cache in self.dirty.items():
-            self._fields[name].persist(self, cache)
+        ctx = CommitContext(self)
+
+        for mutation in self.staged_mutations():
+            print(mutation.describe())
+            ctx.add(mutation)
+
+        if ctx.has_exceptions():
+            return
+
+        ctx.commit()
+
+        for state in self.staged.values():
+            state.clear()
 
         db.session.add(self.instance)
         db.session.commit()
-
-        self.dirty.clear()
-

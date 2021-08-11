@@ -42,7 +42,7 @@
             {% if field.get() %}
               <img src="{{ field.get().get_url() }}" class="col-4" />
             {% endif %}
-          {% elif field.widget == 'reference' %}
+          {% elif field.widget == 'reference' and field.get() %}
           <div class="border rounded d-inline-flex mt-2 align-items-center" style="padding: .25rem .75rem .25rem .75rem; cursor: pointer" onclick="window.location = '{{ url_for('resource.view', id=field.get().id) }}'">
             <div class="d-flex flex-column justify-content-center">
               <span>{{ field.get().title() }}</span>
