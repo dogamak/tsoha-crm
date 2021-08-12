@@ -124,6 +124,7 @@
 
         .drawer {
             position: absolute;
+            z-index: 1000;
             top: $option-height - 0.25rem;
             left: -1px;
             right: -1px;
