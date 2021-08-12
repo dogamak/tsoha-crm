@@ -4,12 +4,13 @@ import babel.numbers
 from enum import Enum
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask import request, redirect
+from dataclasses import dataclass
 
 from sqlalchemy.sql import select, not_
 
 from crm.db import db
 from crm.access import AccessControlList
-from crm.mutation import Mutation, mutation
+from crm.mutation import DecoratorMutation, Mutation, mutation
 
 
 class ActionContext:
@@ -71,9 +72,9 @@ class FieldState:
         while len(self.mutations) > i:
             mutation = self.mutations[i]
 
-            print(mutation, mutation.args[0], value)
+            print(mutation, mutation.args[0], value, type(mutation.args[0]), type(value), mutation.args[0] == value)
 
-            if mutation.type == Field.set_value and mutation.args[0] == value:
+            if isinstance(mutation, DecoratorMutation) and mutation.attr.name == 'set_value' and mutation.args[0] == value:
                 self.mutations.pop(i)
                 continue
 
@@ -215,10 +216,10 @@ class DateField(Field):
         ctx.dispatch(self.set_value(value))
 
 
+@dataclass(eq=True)
 class CurrencyValue:
-    def __init__(self, amount, currency):
-        self.amount = amount or 0
-        self.currency = currency or 'USD'
+    amount: float
+    currency: str
 
     def __str__(self):
         return babel.numbers.format_currency(self.amount, self.currency)
@@ -244,6 +245,10 @@ class CurrencyField(Field):
     def set_value(self, ctx, value):
         setattr(ctx.resource.instance, self.name, value.amount)
         setattr(ctx.resource.instance, self.name + '_1', value.currency)
+
+    @set_value.describe
+    def describe_set_value(self, value):
+        return f'Set field "{self.label}" to {value}'
 
     @action
     def set_value_action(self, ctx):

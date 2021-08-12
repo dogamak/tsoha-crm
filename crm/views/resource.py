@@ -32,6 +32,7 @@ class EditSession:
             instance = Resource.get_resource(self.resource_id)
 
         instance = self.resource_type(from_instance=instance.instance, state=self.edit_state)
+        self.resource = instance
 
         instance.save()
         self.__class__.sessions.pop(self.key)
@@ -51,7 +52,7 @@ class EditSession:
         if self._finished_url is not None:
             return self._finished_url
 
-        return url_for('resource.view', id=self.resource_id)
+        return url_for('resource.view', id=self.resource.id)
 
     @classmethod
     def create(cls, resource, **kwargs):

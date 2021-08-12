@@ -6,6 +6,7 @@ from crm.mutation import CommitContext
 from sqlalchemy import event
 from flask_sqlalchemy.model import DefaultMeta
 from flask import session
+from datetime import datetime
 
 
 class ResourceUserAssignment(db.Model):
@@ -152,6 +153,14 @@ class ResourceMeta(type):
                 secondary='join(Resource, ResourceUserAssignment)',
                 primaryjoin=f'{inst.__name__}.variant_id == Resource.{inst.__name__.lower()}_id',
                 secondaryjoin='ResourceUserAssignment.user_id == User.variant_id',
+                uselist=True,
+            ),
+
+            events = db.relationship(
+                'ResourceLog',
+                secondary='resource',
+                primaryjoin=f'{inst.__name__}.variant_id == Resource.{inst.__name__.lower()}_id',
+                secondaryjoin='Resource.id == ResourceLog.resource_id',
                 uselist=True,
             ),
         )
@@ -547,10 +556,14 @@ class BaseResource(metaclass=ResourceMeta):
         Saves this resource to the database and performs the associated book-keeping.
         """
 
+        from crm.models import ResourceLog
+        from crm.auth import get_session_user
+
         ctx = CommitContext(self)
 
-        for mutation in self.staged_mutations():
-            print(mutation.describe())
+        mutations = list(self.staged_mutations())
+
+        for mutation in mutations:
             ctx.add(mutation)
 
         if ctx.has_exceptions():
@@ -562,5 +575,23 @@ class BaseResource(metaclass=ResourceMeta):
             state.clear()
 
         db.session.add(self.instance)
-        print(db.session.dirty)
         db.session.commit()
+
+        for mutation in mutations:
+            message = mutation.describe()
+
+            if message is None:
+                continue
+
+            log = ResourceLog(
+                resource_id=self.id,
+                timestamp=datetime.now(),
+                subject=get_session_user().instance.variant_id,
+                message=message,
+            )
+
+            db.session.add(log)
+
+        db.session.commit()
+
+        print('ID', self.id)
