@@ -5,7 +5,7 @@
   <div>
     {{ resource.__class__.__name__ }} / <a href="{{ url_for('resource.view', id=resource.id) }}">{{ resource.title() }}</a>  </div>
   <div>
-    <a class="btn btn-secondary" href="{{ url_for('resource.edit', id=resource.id) }}">Muokkaa</a>
+    <a class="btn btn-secondary" href="{{ url_for('resource.begin_edit', id=resource.id) }}">Muokkaa</a>
   </div>
 </div>
 

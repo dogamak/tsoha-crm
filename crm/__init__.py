@@ -1,7 +1,4 @@
 from flask import Flask, render_template, session, redirect, request, url_for, flash
-import random
-import string
-
 from sqlalchemy import select
 
 from crm.auth import has_role, require_auth
@@ -15,9 +12,7 @@ from crm.models import Account, Resource, User
 from crm.models.user import UserRole
 from crm.models.resource import ResourceUserAssignment
 from crm.access import AccessType
-
-def generate_random_string(length):
-    return ''.join(random.choice(string.ascii_letters) for _ in range(0, length))
+from crm.utils import generate_random_string
 
 def create_app():
     app = Flask(__name__)

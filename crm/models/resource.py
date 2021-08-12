@@ -263,6 +263,9 @@ class BoundField:
         user = User.get(session['user_id'])
         return self.field.check_access(self.resource, user, access_type)
 
+    def execute_action(self, name, *args, **kwargs):
+        self.field.execute_action(name, self.resource, *args, **kwargs)
+
     def __getattr__(self, name):
         return getattr(self.field, name)
 

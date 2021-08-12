@@ -1,4 +1,5 @@
 import json
+from sqlalchemy.sql import update, select
 import babel.numbers
 from enum import Enum
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -88,7 +89,7 @@ class FieldState:
     def get_value(self, bound):
         for mutation in self.mutations[::-1]:
             if mutation.type == Field.set_value:
-                return mutation.value
+                return mutation.args[0]
 
         return bound.get_persisted_value()
 
@@ -105,6 +106,11 @@ class SetMutation(Mutation):
         return f'Change field "{self.field.label}" to "{self.value}"'
 
 
+def action(func):
+    func.__is_action = True
+    return func
+
+
 class Field:
     def __init__(self, column_type, *args, label=None, widget=None, acl=None, **kwargs):
         self.name = None
@@ -116,6 +122,14 @@ class Field:
         self.column_args = args
         self.column_kwargs = kwargs
         self.state = FieldState
+
+    def execute_action(self, name, *args, **kwargs):
+        member = getattr(self, name)
+
+        if not hasattr(member, '__is_action'):
+            raise ValueError(f'No such action for field type {self.__class__.__name__}: {name}')
+
+        return member(*args, **kwargs)
 
     def create_columns(self):
         if self.column_type is None:
@@ -394,56 +408,41 @@ class TableFieldState(FieldState):
             if id in self.added:
                 self.added.remove(id)
             elif id not in self.removed:
-                self.removed.add(id)
+                self.removed.append(id)
             else:
                 return
 
         super().stage_mutation(mutation)
 
-    def get_mutations(self):
+    def get_mutations(self, bound):
         return self.mutations
 
     def get_value(self, bound):
-        variant_column_name = bound.remote_type.__name__.lower() + '_id'
-        resource_model = bound.remote_type.__resource_model__
+        variant_column_name = bound.foreign_type.__name__.lower() + '_id'
+        resource_model = bound.foreign_type.__resource_model__
         variant_column = getattr(resource_model, variant_column_name)
 
         added_variant_ids = select(variant_column).where(resource_model.id.in_(self.added))
         removed_variant_ids = select(variant_column).where(resource_model.id.in_(self.removed))
 
-        added_resources = select(bound.remote_type.model) \
-            .where(bound.remote_type.model.variant_id.in_(added_variant_ids))
+        added_resources = select(bound.foreign_type.model) \
+            .where(bound.foreign_type.model.variant_id.in_(added_variant_ids))
 
-        select(bound.remote_type.model).where(bound.remote_field.column.in_(self.added))
+        select(bound.foreign_type.model).where(bound.foreign_field.column.in_(self.added))
 
-        query = bound.get_query() \
-            .where(not_(bound.remote_type.model.variant_id.in_(removed_variant_ids))) \
+        query = bound.get_query(bound) \
+            .where(not_(bound.foreign_type.model.variant_id.in_(removed_variant_ids))) \
             .union(added_resources)
 
-        return db.session.execute(query)
+        query = db.session.query(bound.foreign_type.model).from_statement(query)
 
+        print(query)
+        print(db.session.execute(query).all())
 
-
-class TableFieldCache:
-    def __init__(self, resource, field):
-        self.field = field
-        self.resource = resource
-        self.mutations = []
-
-    def get_value(self):
-        return None
-
-        fmodel = self.field.foreign_type.model
-        fcolumn = self.field.foreign_field.column
-        local_id = self.resource.id
-
-        return fmodel.query.filter(fcolumn == local_id).all()
-
-    def remove_row(self, row):
-        self.mutations.append(('remove', row))
-
-    def add_row(self, row):
-        self.mutations.append(('add', row))
+        return [
+            bound.foreign_type(from_instance=row[0])
+            for row in db.session.execute(query).all()
+        ]
 
 
 class TableField(Field):
@@ -454,7 +453,9 @@ class TableField(Field):
         self._foreign_field_ref = foreign_field
         self._foreign_field = None
 
-        super().__init__(None, cache=TableFieldCache, *args, **kwargs)
+        super().__init__(None, *args, **kwargs)
+
+        self.state = TableFieldState
 
     @property
     def foreign_field(self):
@@ -495,6 +496,10 @@ class TableField(Field):
         resource = Resource.get_resource(id)
         return f'Remove "{resource.title()}" from "{self.label}".'
 
+    @mutation
+    def add_row(self, ctx, id):
+        pass
+
     def persist(self, resource, cache):
         pass
 
@@ -507,8 +512,8 @@ class TableField(Field):
             for i in self.foreign_type.model.query.filter(self.foreign_field.column == resource.id).all()
         ]
 
-    def set_value(self, resource, value):
-        pass
+    def get_query(self, bound):
+        return select(self.foreign_type.model).where(self.foreign_field.column == bound.resource.id)
 
     @staticmethod
     def get_value_json(bound):
