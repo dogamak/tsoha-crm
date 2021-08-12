@@ -32,11 +32,14 @@
         props: {
             name: String,
             options: Array,
+            initialSelection: Number,
         },
 
         data () {
             return {
-                selected: null,
+                selected: this.initialSelection === undefined
+                    ? null
+                    : this.options.find((option) => option.id === this.initialSelection),
                 open: false,
                 filter: '',
                 focused: -1,

@@ -324,7 +324,7 @@ class BaseResource(metaclass=ResourceMeta):
     Used when displaying this resource.  
     """
 
-    def __init__(self, from_instance=None, **kwargs):
+    def __init__(self, from_instance=None, state=None, **kwargs):
         instance = from_instance
 
         if instance is None:
@@ -333,10 +333,13 @@ class BaseResource(metaclass=ResourceMeta):
         object.__setattr__(self, 'instance', instance)
         object.__setattr__(self, 'fields', BoundFields(self))
 
-        staged = {
-            field.name: field.state()
-            for field in self._fields.values()
-        }
+        staged = state
+
+        if staged is None:
+            staged = {
+                field.name: field.state()
+                for field in self._fields.values()
+            }
 
         object.__setattr__(self, 'staged', staged)
 
@@ -559,4 +562,5 @@ class BaseResource(metaclass=ResourceMeta):
             state.clear()
 
         db.session.add(self.instance)
+        print(db.session.dirty)
         db.session.commit()

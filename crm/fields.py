@@ -3,7 +3,7 @@ from sqlalchemy.sql import update, select
 import babel.numbers
 from enum import Enum
 from werkzeug.security import check_password_hash, generate_password_hash
-from flask import request
+from flask import request, redirect
 
 from sqlalchemy.sql import select, not_
 
@@ -13,9 +13,10 @@ from crm.mutation import Mutation, mutation
 
 
 class ActionContext:
-    def __init__(self, bound):
+    def __init__(self, bound, edit_session):
         self.bound = bound
         self.arguments = ActionArguments(self)
+        self.edit_session = edit_session
 
     def dispatch(self, mutation):
         self.bound.resource.stage_mutation(mutation)
@@ -474,11 +475,18 @@ class TableField(Field):
         return self.foreign_field.resource
 
     @action
-    def remove_selected(self, ctx):
-        selected = ctx.arguments['selected'].split(',')
+    def create_new(self, ctx):
+        from crm.views.resource import EditSession
+        session = EditSession.create(self.foreign_type(), finished_url=ctx.edit_session.form_url)
+        session.resource.fields[self.foreign_field.name].set(ctx.bound.resource.id)
+        return redirect(session.form_url)
 
-        if len(selected) == 0:
+    @action
+    def remove_selected(self, ctx):
+        if ctx.arguments['selected'] == '':
             return
+
+        selected = ctx.arguments['selected'].split(',')
 
         for id in selected:
             ctx.dispatch(self.remove_row(id))

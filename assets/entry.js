@@ -13,9 +13,9 @@ import ResourceSelect from './js/components/ResourceSelect.vue';
 import ResourceTable from './js/components/ResourceTable.vue';
 import DatePicker from './js/components/DatePickerField.vue';
 
-window.createResourceSelect = (selector, name, options) => {
+window.createResourceSelect = (selector, name, options, initialSelection) => {
   const app = createApp({
-    render: () => h(ResourceSelect, { name, options }),
+    render: () => h(ResourceSelect, { name, options, initialSelection }),
   });
 
   app.mount(selector);

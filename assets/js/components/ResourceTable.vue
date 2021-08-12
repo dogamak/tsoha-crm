@@ -3,7 +3,7 @@
         <div class="card-header">
             <div class="d-flex align-items-center justify-content-between">
                 <span></span>
-                <a class="btn btn-sm btn-primary" :href="`/create/${resourceType}`">Luo uusi {{resourceType}}</a>
+                <button class="btn btn-sm btn-primary" name="__action" :value="`${fieldName}.create_new`">Luo uusi {{resourceType}}</button>
             </div>
         </div>
         <div>
@@ -29,7 +29,7 @@
                 <div class="d-flex">
                     <input type="hidden" :name="`${fieldName}.selected`" :value="selected.join(',')" />
                     <button class="btn btn-sm btn-danger me-2" type="submit" name="__action" :value="`${fieldName}.remove_selected`">Poista valitut</button>
-                    <a class="btn btn-sm btn-primary" :href="`/create/${resourceType}`">Luo uusi {{resourceType}}</a>
+                    <button class="btn btn-sm btn-primary" name="__action" :value="`${fieldName}.create_new`">Luo uusi {{resourceType}}</button>
                 </div>
             </div>
         </div>

@@ -15,15 +15,25 @@ blueprint = Blueprint('resource', __name__)
 
 class EditSession:
     def __init__(self, key, resource, created_by, form_url=None, finished_url=None):
+        self.resource = resource
+        self.resource_type = resource.__class__
+        self.resource_id = resource.id
+        self.edit_state = resource.staged
         self.key = key
         self.created_at = datetime.now()
         self.created_by = created_by
-        self.resource = resource
         self._form_url = form_url
         self._finished_url = finished_url
 
     def commit(self):
-        self.resource.save()
+        if self.resource_id is None:
+            instance = self.resource_type()
+        else:
+            instance = Resource.get_resource(self.resource_id)
+
+        instance = self.resource_type(from_instance=instance.instance, state=self.edit_state)
+
+        instance.save()
         self.__class__.sessions.pop(self.key)
 
     @property
@@ -31,14 +41,17 @@ class EditSession:
         if self._form_url is not None:
             return self._form_url
 
-        return url_for('resource.edit', id=self.resource.id, key=self.key)
+        if self.resource_id is None:
+            return url_for('resource.create', type=self.resource_type.__name__, key=self.key)
+        else:
+            return url_for('resource.edit', id=self.resource_id, key=self.key)
 
     @property
     def finished_url(self):
         if self._finished_url is not None:
             return self._finished_url
 
-        return url_for('resource.view', id=self.resource.id)
+        return url_for('resource.view', id=self.resource_id)
 
     @classmethod
     def create(cls, resource, **kwargs):
@@ -63,7 +76,16 @@ class EditSession:
         if session['user_id'] != edit_session.created_by:
             return None
 
-        db.session.add(edit_session.resource.instance)
+        if edit_session.resource_id is None:
+            instance = edit_session.resource_type()
+        else:
+            instance = Resource.get_resource(edit_session.resource_id)
+
+        instance = edit_session.resource_type(from_instance=instance.instance, state=edit_session.edit_state)
+
+        edit_session.resource = instance # edit_session.resource_type(state=edit_session.edit_state)
+        # db.session.refresh(edit_session.resource.instance)
+        # db.session.add(edit_session.resource.instance)
 
         return edit_session
 
@@ -149,7 +171,7 @@ def edit_post(id, key):
         if field.name not in request.files and field.name not in request.form:
             continue
 
-        ctx = ActionContext(field)
+        ctx = ActionContext(field, edit_session)
         field.set_value_action(ctx)
     
     action = request.form.get('__action', None)
@@ -163,56 +185,77 @@ def edit_post(id, key):
             flash('Invalid request.')
             return redirect(edit_session.form_url)
 
-        ctx = ActionContext(field)
-        attr(ctx)
+        ctx = ActionContext(field, edit_session)
+        result = attr(ctx)
 
-        return redirect(edit_session.form_url)
+        if result is None:
+            return redirect(edit_session.form_url)
+        else:
+            return result
     else:
         edit_session.commit()
         flash('Resource updated successfully!')
         return redirect(edit_session.finished_url)
 
 @blueprint.route('/create/<type>')
-def create(type):
+def begin_create(type):
     resource_type = Resource.get_type(type)
     default_values = resource_type()
+
+    session = EditSession.create(default_values)
 
     if not default_values.check_access(get_session_user(), AccessType.Create):
         return render_template('not_found')
 
-    return render_template('create-resource.html', type=type, resource=default_values)
+    return redirect(session.form_url)
 
-@blueprint.route('/create/<type>', methods=['POST'])
-def create_post(type):
-    resource = Resource.get_type(type)()
+@blueprint.route('/create/<type>/<key>')
+def create(type, key):
+    session = EditSession.get(key)
 
-    if not resource.check_access(get_session_user(), AccessType.Create):
+    if session is None:
+        return redirect(url_for('resource.begin_create', type=type))
+
+    if not session.resource.check_access(get_session_user(), AccessType.Create):
         return render_template('not_found')
 
-    user = get_session_user()
-    resource.set_created_by(user)
+    session.resource.set_created_by(get_session_user())
 
-    for field in resource.fields:
-        if field.name in request.files:
-            new_value = request.files[field.name]
-        elif field.name in request.form:
-            new_value = request.form[field.name]
-        else:
+    return render_template('create-resource.html', type=type, edit_session=session, resource=session.resource)
+
+@blueprint.route('/create/<type>/<key>', methods=['POST'])
+def create_post(type, key):
+    edit_session = EditSession.get(key)
+
+    if not edit_session.resource.check_access(get_session_user(), AccessType.Create):
+        return render_template('not_found')
+
+    for field in edit_session.resource.fields:
+        if field.name not in request.files and field.name not in request.form:
             continue
 
-        extra_arguments = {
-            param_name.split('.', 1)[1]: param_value
-            for param_name, param_value in request.form.items()
-            if param_name.startswith(field.name + '.')
-        }
-
-        try:
-            field.set(new_value, **extra_arguments)
-        except ValueError as e:
-            flash(str(e), 'error')
-            return redirect(url_for('resource.create', type=type))
+        ctx = ActionContext(field, edit_session)
+        field.set_value_action(ctx)
     
-    resource.save()
+    action = request.form.get('__action', None)
 
-    flash('Resource created successfully!')
-    return redirect(url_for('resource.view', id=resource.id))
+    if action is not None:
+        field_name, action_name = action.split('.', 1)
+        field = edit_session.resource.fields[field_name]
+        attr = getattr(field, action_name)
+
+        if not hasattr(attr, '__is_action'):
+            flash('Invalid request.')
+            return redirect(edit_session.form_url)
+
+        ctx = ActionContext(field, edit_session)
+        result = attr(ctx)
+
+        if result is None:
+            return redirect(edit_session.form_url)
+        else:
+            return result
+    else:
+        edit_session.commit()
+        flash('Resource created successfully!')
+        return redirect(edit_session.finished_url)

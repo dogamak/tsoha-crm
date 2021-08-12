@@ -59,7 +59,7 @@
                   {% elif field.widget == 'reference' %}
                     <div id="resource-select-{{field.name}}"></div>
                     <script type="text/javascript">
-                      window.createResourceSelect('#resource-select-{{field.name}}', '{{field.name}}', {{ field.get_options() | safe }});
+                      window.createResourceSelect('#resource-select-{{field.name}}', '{{field.name}}', {{ field.get_options() | safe }}, {{field.get()}});
                     </script>
                   {% elif field.widget == 'date' %}
                     <div id="date-picker-{{field.name}}"></div>
