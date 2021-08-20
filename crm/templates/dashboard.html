@@ -22,7 +22,28 @@
           </div>
         </div>
       {% endfor %}
-      <div id="test-select"></div>
+    </div>
+    <div class="col-md-4 px-4">
+      <h3>Mahdollisuutesi</h3>
+      {% for opportunity in opportunities %}
+        <div class="card mb-3 mt-3" style="cursor: pointer" onclick="window.location = '{{ url_for('resource.view', id=opportunity.id) }}'">
+          <div class="card-body">
+            <b>{% if opportunity.account %}{{ opportunity.account.title() }} >> {% endif %}{{ opportunity.title() }}</b>
+            <div class="mt-2">{{ opportunity.description }}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="col-md-4 px-4">
+      <h3>Myyntitapahtumasi</h3>
+      {% for sales_order in sales_orders %}
+        <div class="card mb-3 mt-3" style="cursor: pointer" onclick="window.location = '{{ url_for('resource.view', id=sales_order.id) }}'">
+          <div class="card-body">
+            <b>{% if sales_order.opportunity and sales_order.opportunity.account %}{{ sales_order.opportunity.account.title() }} >> {% endif %}{{ sales_order.title() }}</b>
+            <div class="mt-2">{{ sales_order.description }}</div>
+          </div>
+        </div>
+      {% endfor %}
     </div>
   </div>
 </div>

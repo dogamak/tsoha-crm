@@ -8,7 +8,7 @@ from crm.views.resource import blueprint as resource_blueprint
 import crm.db
 
 from crm.config import get_config
-from crm.models import Account, Resource, User
+from crm.models import Account, Resource, User, Opportunity, SalesOrder
 from crm.models.user import UserRole
 from crm.models.resource import ResourceUserAssignment
 from crm.access import AccessType
@@ -38,7 +38,27 @@ def create_app():
                 )
         )
 
-        return render_template('dashboard.html', accounts=accounts)
+        opportunities = Opportunity.from_statement(
+            select(Opportunity.model) \
+                .join(Resource, Resource.opportunity_id == Opportunity.model.variant_id) \
+                .join(ResourceUserAssignment, ResourceUserAssignment.resource_id == Resource.id) \
+                .where(ResourceUserAssignment.user_id == session['user_id']) \
+                .union_all(
+                    select(Opportunity.model).where(Opportunity.model.created_by_id == session['user_id'])
+                )
+        )
+
+        sales_orders = SalesOrder.from_statement(
+            select(SalesOrder.model) \
+                .join(Resource, Resource.salesorder_id == SalesOrder.model.variant_id) \
+                .join(ResourceUserAssignment, ResourceUserAssignment.resource_id == Resource.id) \
+                .where(ResourceUserAssignment.user_id == session['user_id']) \
+                .union_all(
+                    select(SalesOrder.model).where(SalesOrder.model.created_by_id == session['user_id'])
+                )
+        )
+
+        return render_template('dashboard.html', accounts=accounts, opportunities=opportunities, sales_orders=sales_orders)
 
     @app.route('/create_test_account')
     def create_test_account():
