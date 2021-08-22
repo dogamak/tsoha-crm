@@ -273,14 +273,35 @@ def confirm_edit(key):
 
 @blueprint.route('/create/<type>/<key>')
 def create(type, key):
-    session = EditSession.get(key)
+    edit_session = EditSession.get(key)
 
-    if session is None:
+    if edit_session is None:
         return redirect(url_for('resource.begin_create', type=type))
 
-    if not session.resource.check_access(get_session_user(), AccessType.Create):
+    if not edit_session.resource.check_access(get_session_user(), AccessType.Create):
         return render_template('not_found')
 
-    session.resource.set_created_by(get_session_user())
+    edit_session.resource.set_created_by(get_session_user())
 
-    return render_template('create-resource.html', type=type, edit_session=session, resource=session.resource)
+    field_messages = {}
+    messages = []
+
+    for exception in edit_session.commit_ctx.exceptions:
+        msg = FieldMessage(type='danger', text=exception.message)
+
+        if exception.field is None:
+            messages.append(msg)
+        else:
+            if exception.field.name not in field_messages:
+                field_messages[exception.field.name] = []
+
+            field_messages[exception.field.name].append(msg)
+
+    return render_template(
+        'create-resource.html',
+        type=type,
+        edit_session=edit_session,
+        resource=edit_session.resource,
+        messages=messages,
+        field_messages=field_messages
+    )
