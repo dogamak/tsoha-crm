@@ -1,10 +1,11 @@
-import json
-from sqlalchemy.sql import update, select
-import babel.numbers
-from enum import Enum
-from werkzeug.security import check_password_hash, generate_password_hash
-from flask import request, redirect
 from dataclasses import dataclass
+from enum import Enum
+from flask import request, redirect
+from sqlalchemy.sql import update, select
+from werkzeug.security import check_password_hash, generate_password_hash
+import babel.numbers
+import json
+import sqlalchemy
 
 from sqlalchemy.sql import select, not_
 
@@ -434,16 +435,11 @@ class TableFieldState(FieldState):
         added_resources = select(bound.foreign_type.model) \
             .where(bound.foreign_type.model.variant_id.in_(added_variant_ids))
 
-        select(bound.foreign_type.model).where(bound.foreign_field.column.in_(self.added))
-
         query = bound.get_query(bound) \
             .where(not_(bound.foreign_type.model.variant_id.in_(removed_variant_ids))) \
             .union(added_resources)
 
         query = db.session.query(bound.foreign_type.model).from_statement(query)
-
-        print(query)
-        print(db.session.execute(query).all())
 
         return [
             bound.foreign_type(from_instance=row[0])
@@ -526,6 +522,9 @@ class TableField(Field):
         ]
 
     def get_query(self, bound):
+        if bound.resource.id is None:
+            return select(self.foreign_type.model).where(sqlalchemy.sql.false())
+
         return select(self.foreign_type.model).where(self.foreign_field.column == bound.resource.id)
 
     @staticmethod
