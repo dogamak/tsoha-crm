@@ -3,5 +3,5 @@
 {% from "edit-resource-macro.html" import resource_edit_form with context %}
 
 {% block settings_content %}
-  {{ resource_edit_form(user) }}
+  {{ resource_edit_form(user, edit_session_key=edit_session.key) }}
 {% endblock %}

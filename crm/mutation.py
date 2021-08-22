@@ -71,50 +71,55 @@ def mutation(func):
     return MutationAttribute(func)
 
 
-class MutationException:
-    def __init__(self, id, message, fatal=True):
+class CommitException:
+    def __init__(self, id, message, fatal=True, field=None):
         self.id = id
         self.message = message
         self.fatal = fatal
+        self.field = field
         self.mutation = None
 
 
-class MutationWarning(MutationException):
-    def __init__(self, id, message, dismiss_label=None):
-        super().__init__(id, message)
+class CommitWarning(CommitException):
+    def __init__(self, id, message, dismiss_label=None, **kwargs):
+        super().__init__(id, message, **kwargs)
         self.dismiss_label = dismiss_label
 
 
-class MutationError(MutationException):
-    def __init__(self, id, message):
-        super().__init__(id, message, fatal=True)
+class CommitError(CommitException):
+    def __init__(self, id, message, **kwargs):
+        super().__init__(id, message, fatal=True, **kwargs)
 
 
-class MutationExceptionPolicy:
-    def ignore(self, mutation):
+class CommitExceptionPolicy:
+    def ignore(self, exception):
         return False
 
-    def is_fatal(self, mutation):
-        return mutation.fatal
+    def is_fatal(self, exception):
+        return exception.fatal
 
 
-class CommitMutationContext:
-    def __init__(self, resource, mutation, exception_policy):
-        self.resource = resource
+class FieldCommitContext:
+    def __init__(self, ctx, field):
+        self.parent_ctx = ctx
+        self.field = field
+
+    def error(self, *args, **kwargs):
+        self.parent_ctx.error(*args, **kwargs, field=self.field)
+
+    def warning(self, *args, **kwargs):
+        self.parent_ctx.warning(*args, **kwargs, field=self.field)
+
+    @property
+    def resource(self):
+        return self.parent_ctx.resource
+
+
+class CommitMutationContext(FieldCommitContext):
+    def __init__(self, ctx, mutation):
+        super().__init__(ctx, mutation.field)
         self.mutation = mutation
-        self.exceptions = []
         self.failed = False
-        self.policy = exception_policy
-
-    def declare(self, exception):
-        exception.mutation = self
-
-        self.exceptions.append(exception)
-
-        if self.policy.is_fatal(exception):
-            self.failed = True
-
-        return not self.policy.ignore(exception)
 
     def has_failed(self):
         return self.failed
@@ -135,35 +140,45 @@ class CommitContext:
         self.mutations = []
         self.failed = False
         self.exception_policy = exception_policy
+        self.exceptions = []
 
         if self.exception_policy is None:
-            self.exception_policy = MutationExceptionPolicy()
+            self.exception_policy = CommitExceptionPolicy()
 
-    def add(self, mutation):
-        ctx = CommitMutationContext(self.resource, mutation, self.exception_policy)
+    def add(self, mutation, no_check=False):
+        ctx = CommitMutationContext(self, mutation)
         self.mutations.append(ctx)
 
-        ctx.check()
+        if not no_check:
+            ctx.check()
 
-        if ctx.has_failed():
+    def exception(self, exception):
+        self.exceptions.append(exception)
+
+        if not self.exception_policy.ignore(exception) and self.exception_policy.is_fatal(exception):
             self.failed = True
 
-    def exceptions(self):
-        for ctx in self.mutations:
-            yield from ctx.exceptions
+    def error(self, *args, **kwargs):
+        self.exception(CommitError(*args, **kwargs))
+
+    def warning(self, *args, **kwargs):
+        self.exception(CommitWarning(*args, **kwargs))
+
+    def field(self, field):
+        if isinstance(field, str):
+            field = self.resource.fields[field]
+
+        return FieldCommitContext(self, field)
 
     def has_exceptions(self):
-        for ctx in self.mutations:
-            if ctx.has_exceptions():
-                return True
+        return len(self.exceptions) > 0
 
-        return False
+    def validate(self):
+        self.resource.validate(self)
 
     def commit(self):
         if self.failed:
-            return list(self.exceptions())
-
-        print(self.mutations)
+            return self.exceptions
 
         #try:
         for ctx in self.mutations:

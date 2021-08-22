@@ -1,8 +1,14 @@
 {% macro resource_edit_form(resource, edit_session_key, action=false, redirect=false, id=false, no_submit_button=false) %}
-  <form id="{{id}}" action="{{ action if action is not false else url_for('resource.edit_post', id=resource.id, key=edit_session_key) }}" method="POST" enctype="multipart/form-data">
+  <form id="{{id}}" action="{{ action if action is not false else url_for('resource.commit_edit', key=edit_session_key) }}" method="POST" enctype="multipart/form-data">
     {% if redirect is not false %}
       <input type="hidden" value="{{redirect}}" name="__redirect" />
     {% endif %}
+
+    {% for message in  messages %}
+      <div class="field-message field-message-{{ message.type }} alert alert-{{ message.type }}">
+        {{ message.text }}
+      </div>
+    {% endfor %}
 
     {% for section in resource.layout %}
       <div class="mb-3 resource-section">
@@ -12,6 +18,11 @@
         <div class="resource-section-body">
           {% for field in section.fields if field.check_access(AccessType.Write) %}
             <div class="mb-3">
+              {% for message in  field_messages.get(field.name, []) %}
+                <div class="field-message field-message-{{ message.type }} alert alert-{{ message.type }}">
+                  {{ message.text }}
+                </div>
+              {% endfor %}
               {% if field.widget == 'password' %}
               <div class="row">
                 <div class="col">

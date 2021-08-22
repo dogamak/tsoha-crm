@@ -15,7 +15,7 @@
 <div class="container-sm d-flex justify-content-center">
   <div class="card mt-4 col-md-6">
     <div class="card-body">
-      {{ resource_edit_form(resource, id='resource-creation-form', edit_session_key=edit_session.key, action=url_for('resource.create_post', type=type, key=edit_session.key)) }}
+      {{ resource_edit_form(resource, id='resource-creation-form', edit_session_key=edit_session.key, action=url_for('resource.commit_edit', key=edit_session.key)) }}
     </div>
   </div>
 </div>

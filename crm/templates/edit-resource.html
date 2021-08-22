@@ -4,7 +4,7 @@
 
 {% block details %}
 <div class="d-flex justify-content-between align-items-center">
-  <div>{{ resource.__class__.__name__ }} / <a href="{{ url_for('resource.view', id=resource.id) }}">{{ resource.title() }}</a> / Muokkaa</div>
+  <div>{{ resource.__class__.__name__ }} / <a href="{{ url_for('resource.view', id=edit_session.resource.id) }}">{{ edit_session.resource.title() }}</a> / Muokkaa</div>
   <div>
     <button class="btn btn-primary" onclick="document.getElementById('resource-edit-form').submit()">Tallenna</button>
   </div>
@@ -15,7 +15,7 @@
 <div class="container-sm d-flex justify-content-center">
   <div class="card mt-4 col-md-6">
     <div class="card-body">
-      {{ resource_edit_form(resource, edit_session_key=edit_session_key, id='resource-edit-form') }}
+      {{ resource_edit_form(edit_session.resource, edit_session_key=edit_session.key, id='resource-edit-form') }}
     </div>
   </div>
 </div>

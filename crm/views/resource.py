@@ -1,6 +1,7 @@
 import json
 from flask import Blueprint, redirect, url_for, render_template, flash, request, session
 from datetime import datetime
+from dataclasses import dataclass
 
 from crm.fields import ActionContext
 from crm.access import AccessType
@@ -24,6 +25,13 @@ class EditSession:
         self.created_by = created_by
         self._form_url = form_url
         self._finished_url = finished_url
+        self.commit_ctx = resource.create_commit_context()
+
+    def reset_context(self):
+        self.commit_ctx = self.resource.create_commit_context()
+
+    def validate(self):
+        self.commit_ctx.validate()
 
     def commit(self):
         if self.resource_id is None:
@@ -34,8 +42,14 @@ class EditSession:
         instance = self.resource_type(from_instance=instance.instance, state=self.edit_state)
         self.resource = instance
 
-        instance.save()
+        instance.save(self.commit_ctx)
+
+        if len(self.commit_ctx.exceptions) > 0:
+            return False
+
         self.__class__.sessions.pop(self.key)
+
+        return True
 
     @property
     def form_url(self):
@@ -146,6 +160,12 @@ def begin_edit(id):
     return redirect(session.form_url)
 
 
+@dataclass
+class FieldMessage:
+    type: str
+    text: str
+
+
 @blueprint.route('/edit/<id>/<key>')
 def edit(id, key):
     edit_session = EditSession.get(key)
@@ -156,10 +176,30 @@ def edit(id, key):
     if not edit_session.resource.check_access(get_session_user(), AccessType.Write):
         return render_template('not_found')
 
-    return render_template('edit-resource.html', resource=edit_session.resource, edit_session_key=edit_session.key, AccessType=AccessType)
+    field_messages = {}
+    messages = []
 
-@blueprint.route('/edit/<id>/<key>', methods=['POST'])
-def edit_post(id, key):
+    for exception in edit_session.commit_ctx.exceptions:
+        msg = FieldMessage(type='danger', text=exception.message)
+
+        if exception.field is None:
+            messages.append(msg)
+        else:
+            if exception.field.name not in field_messages:
+                field_messages[exception.field.name] = []
+
+            field_messages[exception.field.name].append(msg)
+
+    return render_template(
+        'edit-resource.html',
+        edit_session=edit_session,
+        messages=messages,
+        field_messages=field_messages,
+        AccessType=AccessType,
+    )
+
+@blueprint.route('/commit/<key>', methods=['POST'])
+def commit_edit(key):
     edit_session = EditSession.get(key)
 
     if edit_session is None:
@@ -176,6 +216,7 @@ def edit_post(id, key):
         field.set_value_action(ctx)
     
     action = request.form.get('__action', None)
+    result = None
 
     if action is not None:
         field_name, action_name = action.split('.', 1)
@@ -189,14 +230,24 @@ def edit_post(id, key):
         ctx = ActionContext(field, edit_session)
         result = attr(ctx)
 
-        if result is None:
-            return redirect(edit_session.form_url)
-        else:
-            return result
+        edit_session.reset_context()
+        edit_session.validate()
     else:
-        edit_session.commit()
-        flash('Resource updated successfully!')
-        return redirect(edit_session.finished_url)
+        edit_session.reset_context()
+        edit_session.validate()
+
+        if len(edit_session.commit_ctx.exceptions) == 0:
+            success = edit_session.commit()
+
+            if len(edit_session.commit_ctx.exceptions) == 0:
+                flash('Resource updated successfully!')
+                result = redirect(edit_session.finished_url)
+
+    if result is None:
+        result = redirect(edit_session.form_url)
+
+    return result
+
 
 @blueprint.route('/create/<type>')
 def begin_create(type):
@@ -209,6 +260,16 @@ def begin_create(type):
         return render_template('not_found')
 
     return redirect(session.form_url)
+
+@blueprint.route('/confirm/<key>')
+def confirm_edit(key):
+    edit_session = EditSession.get(key)
+
+    if edit_session is None:
+        return render_template('not_found')
+
+    return
+
 
 @blueprint.route('/create/<type>/<key>')
 def create(type, key):
@@ -223,40 +284,3 @@ def create(type, key):
     session.resource.set_created_by(get_session_user())
 
     return render_template('create-resource.html', type=type, edit_session=session, resource=session.resource)
-
-@blueprint.route('/create/<type>/<key>', methods=['POST'])
-def create_post(type, key):
-    edit_session = EditSession.get(key)
-
-    if not edit_session.resource.check_access(get_session_user(), AccessType.Create):
-        return render_template('not_found')
-
-    for field in edit_session.resource.fields:
-        if field.name not in request.files and field.name not in request.form:
-            continue
-
-        ctx = ActionContext(field, edit_session)
-        field.set_value_action(ctx)
-    
-    action = request.form.get('__action', None)
-
-    if action is not None:
-        field_name, action_name = action.split('.', 1)
-        field = edit_session.resource.fields[field_name]
-        attr = getattr(field, action_name)
-
-        if not hasattr(attr, '__is_action'):
-            flash('Invalid request.')
-            return redirect(edit_session.form_url)
-
-        ctx = ActionContext(field, edit_session)
-        result = attr(ctx)
-
-        if result is None:
-            return redirect(edit_session.form_url)
-        else:
-            return result
-    else:
-        edit_session.commit()
-        flash('Resource created successfully!')
-        return redirect(edit_session.finished_url)

@@ -284,7 +284,7 @@ class PasswordField(Field):
             return
 
         if confirmation is not None and password != confirmation:
-            raise ValueError(f'Confirmation for field {self.label} does not match.')
+            return
 
         ctx.dispatch(self.set_value(password))
 

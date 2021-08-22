@@ -21,3 +21,9 @@ class User(BaseResource):
 
     def title(self):
         return self.username
+
+    def validate(self, ctx):
+        super().validate(ctx)
+
+        if len(self.username) < 3:
+            ctx.field('username').warning('username-length', 'Username must be at least three characters long.')

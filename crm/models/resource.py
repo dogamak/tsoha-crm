@@ -551,7 +551,13 @@ class BaseResource(metaclass=ResourceMeta):
         for name, state in self.staged.items():
             yield from state.get_mutations(self.fields[name])
 
-    def save(self):
+    def validate(self, ctx):
+        pass
+
+    def create_commit_context(self):
+        return CommitContext(self)
+
+    def save(self, context=None):
         """
         Saves this resource to the database and performs the associated book-keeping.
         """
@@ -559,12 +565,14 @@ class BaseResource(metaclass=ResourceMeta):
         from crm.models import ResourceLog
         from crm.auth import get_session_user
 
-        ctx = CommitContext(self)
+        ctx = CommitContext(self) if context is None else context
 
         mutations = list(self.staged_mutations())
 
         for mutation in mutations:
             ctx.add(mutation)
+
+        ctx.validate()
 
         if ctx.has_exceptions():
             return
