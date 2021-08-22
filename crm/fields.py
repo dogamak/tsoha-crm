@@ -165,7 +165,7 @@ class Field:
 
     @mutation
     def set_value(self, ctx, value):
-        setattr(ctx.resource.instance, self.name, value)
+        setattr(ctx.resource.instance, self.name, self.to_storage(value))
 
     @action
     def set_value_action(self, ctx):
@@ -310,7 +310,7 @@ class ChoiceField(Field):
 
     def to_storage(self, value):
         if issubclass(self.variants, Enum):
-            if isinstance(value, Enum):
+            if isinstance(value, self.variants):
                 return value.value
             elif isinstance(value, str):
                 self.variants(value)

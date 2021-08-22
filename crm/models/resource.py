@@ -512,12 +512,8 @@ class BaseResource(metaclass=ResourceMeta):
 
     def __setattr__(self, name, value):
         field = self._fields[name]
-
-        if name not in self.dirty:
-            self.dirty[name] = field.cache(self, field)
-
-        cache = self.dirty[name]
-        self.stage_mutation(field.set_value(value))
+        mutation = field.set_value(value)
+        self.stage_mutation(mutation)
 
     def stage_mutation(self, mutation):
         self.staged[mutation.field.name].stage_mutation(mutation)
