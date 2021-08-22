@@ -207,6 +207,8 @@ def commit_edit(key):
 
     if not edit_session.resource.check_access(get_session_user(), AccessType.Write):
         return render_template('not_found')
+    
+    edit_session.reset_context()
 
     for field in edit_session.resource.fields:
         if field.name not in request.files and field.name not in request.form:
@@ -230,10 +232,8 @@ def commit_edit(key):
         ctx = ActionContext(field, edit_session)
         result = attr(ctx)
 
-        edit_session.reset_context()
         edit_session.validate()
     else:
-        edit_session.reset_context()
         edit_session.validate()
 
         if len(edit_session.commit_ctx.exceptions) == 0:

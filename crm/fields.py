@@ -24,6 +24,10 @@ class ActionContext:
         self.bound.resource.stage_mutation(mutation)
 
     @property
+    def commit_ctx(self):
+        return self.edit_session.commit_ctx.field(self.bound.name)
+
+    @property
     def value(self):
         name = self.bound.name
 
@@ -283,8 +287,11 @@ class PasswordField(Field):
         if password == '':
             return
 
+        if len(password) < 8:
+            ctx.commit_ctx.error('password-length', 'Password needs to be at least 8 characters long.')
+
         if confirmation is not None and password != confirmation:
-            return
+            ctx.commit_ctx.error('password-confirmation', 'Password confirmation does not match.')
 
         ctx.dispatch(self.set_value(password))
 
