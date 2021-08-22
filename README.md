@@ -29,7 +29,7 @@ Jokaisella resurssilla (asiakas, mahdollisuus, myyntitapahtuma, ym.) on oma aika
    - [x] tarkastella asiakkaan tietoja
    - [x] muokata asiakkaan tietoja
    - [x] kirjata asiakkaalle *mahdollisuuksia*
-   - [ ] luoda realisoituneista *mahdollisuuksista* myyntitapahtumia
+   - [x] luoda realisoituneista *mahdollisuuksista* myyntitapahtumia
    - [ ] kirjata asiakkaan aikajanalle järjestelmän ulkopuolisia tapahtumia, kuten
      - [ ] tapaamisia
      - [ ] vapaamuotoisia kommentteja
