@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from crm.fields import ActionContext
 from crm.access import AccessType
 from crm.models import Resource, User
-from crm.auth import get_session_user
+from crm.auth import get_session_user, require_auth, check_csrf
 from crm.utils import generate_random_string
 from crm.db import db
 
@@ -109,11 +109,12 @@ EditSession.sessions = dict()
 
 
 @blueprint.route('/view/<id>')
+@require_auth
 def view(id):
     resource = Resource.get_resource(id)
 
     if not resource.check_access(get_session_user(), AccessType.Read):
-        return render_template('not_found')
+        return redirect(url_for('dashboard'))
 
     return render_template(
         'view-resource.html',
@@ -126,34 +127,39 @@ def view(id):
     )
 
 @blueprint.route('/edit/<id>/assign', methods=['POST'])
+@check_csrf
+@require_auth
 def assign(id):
     resource = Resource.get_resource(id)
     user = Resource.get_resource(request.form['user'])
 
     if not resource.check_access(get_session_user(), AccessType.Write):
-        return render_template('not_found')
+        return redirect(url_for('dashboard'))
 
     resource.assign_to(user)
     return redirect(url_for('resource.view', id=resource.id))
 
 @blueprint.route('/edit/<resource_id>/unassign/<user_id>')
+@check_csrf
+@require_auth
 def unassign(resource_id, user_id):
     resource = Resource.get_resource(resource_id)
     user = Resource.get_resource(user_id)
 
     if not resource.check_access(get_session_user(), AccessType.Write):
-        return render_template('not_found')
+        return redirect(url_for('dashboard'))
 
     resource.unassign_from(user)
     return redirect(url_for('resource.view', id=resource.id))
 
 
 @blueprint.route('/edit/<id>')
+@require_auth
 def begin_edit(id):
     resource = Resource.get_resource(id)
 
     if not resource:
-        return render_template('not_found')
+        return redirect(url_for('dashboard'))
 
     session = EditSession.create(resource)
 
@@ -167,6 +173,7 @@ class FieldMessage:
 
 
 @blueprint.route('/edit/<id>/<key>')
+@require_auth
 def edit(id, key):
     edit_session = EditSession.get(key)
 
@@ -174,7 +181,7 @@ def edit(id, key):
         return redirect(url_for('resource.begin_edit', id=id))
 
     if not edit_session.resource.check_access(get_session_user(), AccessType.Write):
-        return render_template('not_found')
+        return redirect(url_for('dashboard'))
 
     field_messages = {}
     messages = []
@@ -199,14 +206,16 @@ def edit(id, key):
     )
 
 @blueprint.route('/commit/<key>', methods=['POST'])
+@check_csrf
+@require_auth
 def commit_edit(key):
     edit_session = EditSession.get(key)
 
     if edit_session is None:
-        return render_template('not_found')
+        return render_template('not_found.html')
 
     if not edit_session.resource.check_access(get_session_user(), AccessType.Write):
-        return render_template('not_found')
+        return redirect(url_for('dashboard'))
     
     edit_session.reset_context()
 
@@ -250,28 +259,33 @@ def commit_edit(key):
 
 
 @blueprint.route('/create/<type>')
+@require_auth
 def begin_create(type):
     resource_type = Resource.get_type(type)
+
     default_values = resource_type()
+    default_values.set_created_by(get_session_user())
 
     session = EditSession.create(default_values)
 
     if not default_values.check_access(get_session_user(), AccessType.Create):
-        return render_template('not_found')
+        return redirect(url_for('dashboard'))
 
     return redirect(session.form_url)
 
 @blueprint.route('/confirm/<key>')
+@require_auth
 def confirm_edit(key):
     edit_session = EditSession.get(key)
 
     if edit_session is None:
-        return render_template('not_found')
+        return render_template('not_found.html')
 
     return
 
 
 @blueprint.route('/create/<type>/<key>')
+@require_auth
 def create(type, key):
     edit_session = EditSession.get(key)
 
@@ -279,7 +293,7 @@ def create(type, key):
         return redirect(url_for('resource.begin_create', type=type))
 
     if not edit_session.resource.check_access(get_session_user(), AccessType.Create):
-        return render_template('not_found')
+        return redirect(url_for('dashboard'))
 
     edit_session.resource.set_created_by(get_session_user())
 
