@@ -34,7 +34,7 @@ def require_role(role):
 
 
 def get_session_user():
-    return User.get(session['user_id'])
+    return User.get(session['user_id']) if 'user_id' in session else None
 
 
 def has_role(role):

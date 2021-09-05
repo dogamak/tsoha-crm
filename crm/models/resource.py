@@ -586,11 +586,14 @@ class BaseResource(metaclass=ResourceMeta):
 
             if message is None:
                 continue
+            
+            user = get_session_user()
+            subject = user.instance.variant_id if user else None
 
             log = ResourceLog(
                 resource_id=self.id,
                 timestamp=datetime.now(),
-                subject=get_session_user().instance.variant_id,
+                subject=subject,
                 message=message,
             )
 
