@@ -562,6 +562,7 @@ class BaseResource(metaclass=ResourceMeta):
         from crm.auth import get_session_user
 
         ctx = CommitContext(self) if context is None else context
+        ctx.resource = self # XXX
 
         mutations = list(self.staged_mutations())
 
