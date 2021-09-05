@@ -579,6 +579,9 @@ class BaseResource(metaclass=ResourceMeta):
         for state in self.staged.values():
             state.clear()
 
+        if self.instance.created_by is None and self.instance != get_session_user():
+            self.instance.created_by = get_session_user().instance
+
         db.session.add(self.instance)
         db.session.commit()
 

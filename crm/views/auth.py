@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, session, redirect, flash, url_for
 from crm.models import User
+from crm.utils import generate_random_string
 
 blueprint = Blueprint('auth', __name__)
 
@@ -26,11 +27,13 @@ def login_post():
         return redirect(url_for('auth.login'))
 
     session['user_id'] = user.instance.variant_id
+    session['CSRF'] = generate_random_string(32)
 
     return redirect(url_for('dashboard'))
 
 @blueprint.route('/logout')
 def logout():
     session.pop('user_id', None)
+    session.pop('CSRF', None)
 
     return redirect(url_for('auth.login'))

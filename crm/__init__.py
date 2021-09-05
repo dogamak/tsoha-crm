@@ -94,7 +94,7 @@ def create_app():
     @app.context_processor
     def inject_utils():
         user = User.get(session['user_id']) if 'user_id' in session else None
-        return dict(has_role=has_role, session_user=user, AccessType=AccessType)
+        return dict(has_role=has_role, session_user=user, AccessType=AccessType, csrf_token=session.get('CSRF'))
 
     app.register_blueprint(auth_blueprint)
     app.register_blueprint(settings_blueprint)

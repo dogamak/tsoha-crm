@@ -22,7 +22,7 @@
     <b>Assigned to</b><br />
     <ul>
       {% for user in resource.assigned_users %}
-      <li><a href="{{ url_for('resource.view', id=user.id) }}">{{ user.title() }}</a> <a href="{{ url_for('resource.unassign', resource_id=resource.id, user_id=user.id) }}"><i class="bi-x-circle"></i></a></li>
+      <li><a href="{{ url_for('resource.view', id=user.id) }}">{{ user.title() }}</a> <a href="{{ url_for('resource.unassign', resource_id=resource.id, user_id=user.id, csrf=csrf_token) }}"><i class="bi-x-circle"></i></a></li>
       {% endfor %}
     </ul>
     <a href="" data-bs-toggle="modal" data-bs-target="#assign-modal">Add user</a>
@@ -94,6 +94,7 @@
       </div>
       <div class="modal-body">
         <form method="POST" action="{{ url_for('resource.assign', id=resource.id) }}" id="assign-form">
+          <input type="hidden" name="__CSRF" value="{{ csrf_token }}" />
           <label class="text-secondary mb-2">Select user for assignment</label>
           <div id="user-select"></div>
         </form>

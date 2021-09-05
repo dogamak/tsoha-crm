@@ -227,7 +227,7 @@ class CurrencyValue:
     currency: str
 
     def __str__(self):
-        return babel.numbers.format_currency(self.amount, self.currency)
+        return babel.numbers.format_currency(self.amount or 0, self.currency or 'EUR')
 
 
 class CurrencyField(Field):
@@ -257,7 +257,11 @@ class CurrencyField(Field):
 
     @action
     def set_value_action(self, ctx):
-        amount = float(ctx.value)
+        if ctx.value == '':
+            amount = 0
+        else:
+            amount = float(ctx.value)
+
         currency = ctx.arguments['currency']
         mutation = self.set_value(CurrencyValue(amount, currency))
         ctx.dispatch(mutation)
@@ -380,16 +384,35 @@ class ReferenceField(Field):
         return Resource.get_resource(resource_id)
 
     def to_storage(self, instance):
-        return instance.id
+        if isinstance(instance, int):
+            return instance
+        else:
+            return instance.id
 
     @action
     def set_value_action(self, ctx):
         from crm.models import Resource
 
         if isinstance(ctx.value, str):
-            value = Resource.get_resource(int(ctx.value))
+            value = int(ctx.value)
 
-        ctx.dispatch(self.set_value(value.id))
+        if isinstance(value, int):
+            value = Resource.get_resource(value)
+
+        print(value)
+        ctx.dispatch(self.set_value(value))
+
+    @mutation
+    def set_value(self, ctx, value):
+        setattr(ctx.resource.instance, self.name, self.to_storage(value))
+
+    @set_value.describe
+    def describe_set_value(self, value):
+        if isinstance(value, int):
+            from crm.models import Resource
+            value = Resource.get_resource(value)
+
+        return f'Change field "{self.label}" to "{value.title()}".'
 
     def get_options(self):
         return json.dumps([
@@ -486,7 +509,7 @@ class TableField(Field):
     def create_new(self, ctx):
         from crm.views.resource import EditSession
         session = EditSession.create(self.foreign_type(), finished_url=ctx.edit_session.form_url)
-        session.resource.fields[self.foreign_field.name].set(ctx.bound.resource.id)
+        session.resource.fields[self.foreign_field.name].set_value(ctx.bound.resource.id)
         return redirect(session.form_url)
 
     @action

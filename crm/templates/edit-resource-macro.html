@@ -1,5 +1,7 @@
 {% macro resource_edit_form(resource, edit_session_key, action=false, redirect=false, id=false, no_submit_button=false) %}
   <form id="{{id}}" action="{{ action if action is not false else url_for('resource.commit_edit', key=edit_session_key) }}" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="__CSRF" value="{{ csrf_token }}" />
+
     {% if redirect is not false %}
       <input type="hidden" value="{{redirect}}" name="__redirect" />
     {% endif %}
